@@ -90,9 +90,9 @@ void NAKED clear_screen()                                { ASM_THUMB_BL(0x10EDE0
  * Miscellaneuos
  */
 
-void NAKED set_boot_normal()                                                           /* TODO: */ { ASM_THUMB_BL(0x0); }
-void NAKED set_boot_recovery()                                                         /* TODO: */ { ASM_THUMB_BL(0x0); }
-void NAKED set_boot_fastboot_mode()                                                    /* TODO: */ { ASM_THUMB_BL(0x0); }
+void NAKED set_boot_normal()                                                           { ASM_THUMB_BL(0x110398); }
+void NAKED set_boot_recovery()                                                         { ASM_THUMB_BL(0x110378); }
+void NAKED set_boot_fastboot_mode()                                                    { ASM_THUMB_BL(0x110388); }
 int  NAKED is_wifi_only()                                                              { ASM_THUMB_BL(0x10C5C0); }
 
 /* ===========================================================================
