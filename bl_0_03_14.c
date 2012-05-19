@@ -32,10 +32,6 @@
 
 #include "bl_0_03_14.h"
 
-#ifndef __thumb__
-#error Thumb mode must be used.
-#endif
-
 /* ===========================================================================
  * Thumb Mode functions
  * ===========================================================================
@@ -71,11 +67,13 @@ int NAKED boot_key_volume_down_pressed()                 { ASM_THUMB_BL(0x10BDEC
 int NAKED boot_key_volume_up_pressed()                   { ASM_THUMB_BL(0x10BE00); }
 
 /*
- * Current volume key state
+ * GPIO
  */
 
-int NAKED key_volume_down_pressed()                      { ASM_THUMB_BL(0x10C2FC); }
-int NAKED key_volume_up_pressed()                        { ASM_THUMB_BL(0x10C34C); }
+int NAKED get_gpio(int row, int column)                  { ASM_THUMB_BL(0x10C2FC); }
+int NAKED key_volume_down_pressed()                      { ASM_THUMB_BL(0x10C344); }
+int NAKED key_volume_up_pressed()                        { ASM_THUMB_BL(0x10C358); }
+int NAKED key_power_pressed()                            { ASM_THUMB_BL(0x10C36C); }
 
 /*
  * Display functions 

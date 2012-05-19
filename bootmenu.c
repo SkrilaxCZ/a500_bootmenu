@@ -27,10 +27,8 @@ const char* boot_menu_items[] =
 	"%c Reboot\n",
 	"%c Fastboot Mode\n",
 	"%c Boot Recovery\n",
-	"%c Set Boot Primary Kernel Image\n",
-	"%c Set Boot Secondary Kernel Image\n",
-	"%c Set Debug Mode ON\n",
-	"%c Set Debug Mode OFF\n",
+	"%c Set Boot %s Kernel Image\n",
+	"%c Set Debug Mode %s\n",
 	"%c Wipe Cache\n",
 };
 
@@ -56,7 +54,7 @@ void new_frame()
 	strncpy(ptr, ": Bootmenu Mode\n", strlen(": Bootmenu Mode")); 
 	
 	println_display(buffer);
-	println_display("Use Volume DOWN to list, Volume UP to select.\n\n");	
+	println_display("Use volume keys to highlight, power to select.\n\n");	
 }
 
 /*
@@ -98,15 +96,17 @@ void main(void* magic)
 	/* Selected option in boot menu */
 	int selected_option = 0;
 	
-	/* Key press: -1 nothing, 0 Vol DOWN, 1 Vol UP */
+	/* Key press: -1 nothing, 0 Vol DOWN, 1 Vol UP, 2 Power */
 	int key_press = -1;
 
 	/* Which kernel image is booted */
 	const char* boot_partition_str;
+	const char* other_boot_partition_str;
 	int boot_partition;
 	
 	/* Debug mode status */
 	const char* debug_mode_str;
+	const char* other_debug_mode_str;
 	int debug_mode;
 	
 	int i;
@@ -141,16 +141,28 @@ void main(void* magic)
 		
 		/* Print current boot mode */
 		if (boot_partition == 0)
+		{
 			boot_partition_str = "Primary";
+			other_boot_partition_str = "Secondary";
+		}
 		else
+		{
 			boot_partition_str = "Secondary";
+			other_boot_partition_str = "Primary";
+		}
 		
 		println_display("Current boot mode: %s kernel image", boot_partition_str);
 		
 		if (debug_mode == 0)
+		{
 			debug_mode_str = "OFF";
+			other_debug_mode_str = "ON";
+		}
 		else
+		{
 			debug_mode_str = "ON";
+			other_debug_mode_str = "OFF";
+		}
 		
 		println_display("Debug mode: %s\n\n\n\n", debug_mode_str);
 		
@@ -162,27 +174,41 @@ void main(void* magic)
 			else
 				c = ' ';
 			
-			println_display(boot_menu_items[i], c);
+			if (i == 3)
+				println_display(boot_menu_items[i], c, other_boot_partition_str);
+			else if (i == 4)
+				println_display(boot_menu_items[i], c, other_debug_mode_str);
+			else
+				println_display(boot_menu_items[i], c);
 		}
 		
 		/* Now wait for key event, debounce them first */
 		while (key_volume_up_pressed()) { }
-		
 		while (key_volume_down_pressed()) { }
+		while (key_power_pressed()) { }
 		
 		key_press = -1;
 		
 		while (1)
 		{
+			if (key_volume_down_pressed())
+			{
+				key_press = 0;
+				break;
+			}
+			
 			if (key_volume_up_pressed())
 			{
 				key_press = 1;
 				break;
 			}
 			
-			if (key_volume_down_pressed())
+			if (key_power_pressed())
 			{
-				key_press = 0;
+				/* Power key - act on releasing it */
+				while (key_power_pressed()) { }
+				
+				key_press = 2;
 				break;
 			}
 		}
@@ -190,7 +216,7 @@ void main(void* magic)
 		if (key_press < 0)
 			continue;
 		
-		/* We have keypress */
+		/* Volume DOWN */
 		if (key_press == 0)
 		{
 			selected_option++;
@@ -201,7 +227,19 @@ void main(void* magic)
 			continue;
 		}
 		
+		/* Volume UP */
 		if (key_press == 1)
+		{
+			selected_option--;
+			
+			if (selected_option < 0)
+				selected_option = ARRAY_SIZE(boot_menu_items) - 1;
+			
+			continue;
+		}
+		
+		/* Power */
+		if (key_press == 2)
 		{
 			switch(selected_option)
 			{
@@ -221,31 +259,19 @@ void main(void* magic)
 					restore_frame();
 					return;
 					
-				case 3: /* Set boot primary kernel image */
-					msc_set_boot_partition(0);
-					boot_partition = 0;
+				case 3: /* Toggle boot kernel image */
+					boot_partition = !boot_partition;
+					msc_set_boot_partition(boot_partition);
 					selected_option = 0;
 					break;
 					
-				case 4: /* Set boot secondary kernel image */
-					msc_set_boot_partition(1);
-					boot_partition = 1;
+				case 4: /* Toggle debug mode */
+					debug_mode = !debug_mode;
+					msc_set_debug_mode(debug_mode);
 					selected_option = 0;
 					break;
 					
-				case 5: /* Set debug mode ON */
-					msc_set_debug_mode(1);
-					debug_mode = 1;
-					selected_option = 0;
-					break;
-					
-				case 6: /* Set debug mode OFF*/
-					msc_set_debug_mode(0);
-					debug_mode = 0;
-					selected_option = 0;
-					break;
-					
-				case 7: /* Wipe cache */
+				case 5: /* Wipe cache */
 					new_frame();
 					println_display("Erasing CAC partition...");
 					format_partition("CAC");

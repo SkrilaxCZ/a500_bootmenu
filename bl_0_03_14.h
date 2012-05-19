@@ -37,6 +37,10 @@
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 #endif
 
+#ifndef __thumb__
+#error Thumb mode must be used.
+#endif
+
 /* ===========================================================================
  * Structures
  * ===========================================================================
@@ -118,14 +122,20 @@ int boot_key_volume_down_pressed();
 int boot_key_volume_up_pressed();
 
 /*
- * Current volume key state
+ * GPIO
  */
 
-/* Volume DOWN key pressed */
+/* GPIO state */
+int get_gpio(int row, int column);
+
+/* Volume DOWN key pressed (GPIO Q4 - row 16, column 4) */
 int key_volume_down_pressed();
 
-/* Volume UP key pressed */
+/* Volume UP key pressed (GPIO Q4 - row 16, column 5) */
 int key_volume_up_pressed();
+
+/* Power key pressed (GPIO Q4 - row 3, column 0) */
+int key_power_pressed();
 
 /*
  * Display functions 
