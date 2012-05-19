@@ -33,6 +33,10 @@
 #define NULL ((void*)0)
 #endif
 
+#ifndef ARRAY_SIZE
+#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
+#endif
+
 /* ===========================================================================
  * Structures
  * ===========================================================================
@@ -87,10 +91,10 @@ int msc_get_debug_mode();
 int msc_get_boot_partition();
 
 /* Set debug mode */
-void msc_set_debug_mode(int debug_mode);
+void msc_set_debug_mode(unsigned char debug_mode);
 
 /* V5 bootloader: Set boot partition (00 - LNX, 01 - AKB) */
-void msc_set_boot_partition(int boot_partition);
+void msc_set_boot_partition(unsigned char boot_partition);
 
 /* Write fastboot mode reboot command */
 void msc_write_cmd_fastboot_mode();
@@ -128,10 +132,10 @@ int key_volume_up_pressed();
  */
 
 /* Print on the display */
-void printf_display(const char* fmt, ...);
+void println_display(const char* fmt, ...);
 
 /* Print error on the display (red color) */
-void printf_display_error(const char* fmt, ...);
+void println_display_error(const char* fmt, ...);
 
 /* Print bootlogo */
 void print_bootlogo();

@@ -49,15 +49,15 @@
  * Misc partition commands
  */
 
-int  NAKED msc_cmd_factory_reset()                      { ASM_THUMB_BL(0x10C214); }
-int  NAKED msc_cmd_boot_fastboot()                      { ASM_THUMB_BL(0x10C1B4); }
-int  NAKED msc_cmd_boot_recovery()                      { ASM_THUMB_BL(0x10C1E4); }
-int  NAKED msc_get_debug_mode()                         { ASM_THUMB_BL(0x10BDC4); }
-int  NAKED msc_get_boot_partition()                     { ASM_THUMB_BL(0x1102C0); }
-void NAKED msc_set_debug_mode(int debug_mode)           { ASM_THUMB_BL(0x10C088); }
-void NAKED msc_set_boot_partition(int boot_partition)   { ASM_THUMB_BL(0x10BE14); }
-void NAKED msc_write_cmd_fastboot_mode()                { ASM_THUMB_BL(0x10BFC4); }
-void NAKED msc_cmd_clear()                              { ASM_THUMB_BL(0x10C138); }
+int  NAKED msc_cmd_factory_reset()                                { ASM_THUMB_BL(0x10C214); }
+int  NAKED msc_cmd_boot_fastboot()                                { ASM_THUMB_BL(0x10C1B4); }
+int  NAKED msc_cmd_boot_recovery()                                { ASM_THUMB_BL(0x10C1E4); }
+int  NAKED msc_get_debug_mode()                                   { ASM_THUMB_BL(0x10BDC4); }
+int  NAKED msc_get_boot_partition()                               { ASM_THUMB_BL(0x1102C0); }
+void NAKED msc_set_debug_mode(unsigned char debug_mode)           { ASM_THUMB_BL(0x10C088); }
+void NAKED msc_set_boot_partition(unsigned char boot_partition)   { ASM_THUMB_BL(0x10BE14); }
+void NAKED msc_write_cmd_fastboot_mode()                          { ASM_THUMB_BL(0x10BFC4); }
+void NAKED msc_cmd_clear()                                        { ASM_THUMB_BL(0x10C138); }
 
 /*
  * Stored input key state at boot time:
@@ -74,15 +74,15 @@ int NAKED boot_key_volume_up_pressed()                   { ASM_THUMB_BL(0x10BE00
  * Current volume key state
  */
 
-int NAKED key_volume_down_pressed()                      { ASM_THUMB_BL(0x10BDEC); }
-int NAKED key_volume_up_pressed()                        { ASM_THUMB_BL(0x10BE00); }
+int NAKED key_volume_down_pressed()                      { ASM_THUMB_BL(0x10C2FC); }
+int NAKED key_volume_up_pressed()                        { ASM_THUMB_BL(0x10C34C); }
 
 /*
  * Display functions 
  */
 
-void NAKED printf_display(const char* fmt, ...)          { ASM_THUMB_BL(0x10ECB0); }
-void NAKED printf_display_error(const char* fmt, ...)    { ASM_THUMB_BL(0x10ED1C); }
+void NAKED println_display(const char* fmt, ...)         { ASM_THUMB_BL(0x10ECB0); }
+void NAKED println_display_error(const char* fmt, ...)   { ASM_THUMB_BL(0x10ED1C); }
 void NAKED print_bootlogo()                              { ASM_THUMB_BL(0x10CEDC); }
 void NAKED clear_screen()                                { ASM_THUMB_BL(0x10EDE0); }
 
@@ -90,10 +90,11 @@ void NAKED clear_screen()                                { ASM_THUMB_BL(0x10EDE0
  * Miscellaneuos
  */
 
-void NAKED set_boot_normal()                                                           { ASM_THUMB_BL(0x110398); }
-void NAKED set_boot_recovery()                                                         { ASM_THUMB_BL(0x110378); }
-void NAKED set_boot_fastboot_mode()                                                    { ASM_THUMB_BL(0x110388); }
-int  NAKED is_wifi_only()                                                              { ASM_THUMB_BL(0x10C5C0); }
+void NAKED set_boot_normal()                             { ASM_THUMB_BL(0x110398); }
+void NAKED set_boot_recovery()                           { ASM_THUMB_BL(0x110378); }
+void NAKED set_boot_fastboot_mode()                      { ASM_THUMB_BL(0x110388); }
+void NAKED format_partition(const char* partition)       { ASM_THUMB_BL(0x11E534); }
+int  NAKED is_wifi_only()                                { ASM_THUMB_BL(0x10C5C0); }
 
 /* ===========================================================================
  * ARM Mode functions

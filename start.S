@@ -1,6 +1,6 @@
-/*
- * ld-script: ld (linker) script for bootmenu
- *
+/* 
+ * Acer bootloader boot menu application start file.
+ * 
  * Copyright 2012 Skrilax_CZ
  *
  * This program is free software; you can redistribute it and/or modify
@@ -19,28 +19,10 @@
  *
  */
 
-OUTPUT_FORMAT("elf32-littlearm", "elf32-littlearm", "elf32-littlearm")
-OUTPUT_ARCH(arm)
-ENTRY(_start)
-SECTIONS
-{
-	. = 0x00195000;
-	
-	. = ALIGN(4);
-	.text : { *(.text) }
+.text
+.thumb
 
-	. = ALIGN(4);
-	.rodata : { *(.rodata) }
+.globl _start
 
-	. = ALIGN(4);
-	.data : { *(.data) }
-
-	. = ALIGN(4);
-	.got : { *(.got) }
-
-	. = ALIGN(4);
-	.bss : { *(.bss) }
-
-	__bss_end = .;
-}
-
+_start:
+	b	main 

@@ -6,18 +6,22 @@ CC := $(CROSS_COMPILE)gcc
 LD := $(CROSS_COMPILE)ld
 OBJCOPY := $(CROSS_COMPILE)objcopy
 
-CFLAGS := -Os -Wall -Wno-return-type -fno-builtin -mthumb -fPIC -ffunction-sections 
+CFLAGS := -Os -Wall -Wno-return-type -fno-builtin -mthumb -fPIC -ffunction-sections
+AFLAGS := -D__ASSEMBLY__ -fno-builtin -mthumb -fPIC -ffunction-sections
 LDFLAGS := -static -nostdlib --gc-sections 
 O ?= .
-OBJS := $(O)/bootmenu.o $(O)/bl_0_03_14.o
+OBJS := $(O)/start.o $(O)/bl_0_03_14.o $(O)/bootmenu.o 
 
 all: $(O)/bootloader_v6.bin
 
 $(O)/bootmenu.o:
-	$(CC) $(CFLAGS) -c bootmenu.c -o $(O)/bootmenu.o
+	$(CC) $(CFLAGS) -c bootmenu.c -o $@
 
 $(O)/bl_0_03_14.o:
-	$(CC) $(CFLAGS) -c bl_0_03_14.c -o $(O)/bl_0_03_14.o
+	$(CC) $(CFLAGS) -c bl_0_03_14.c -o $@
+
+$(O)/start.o:
+	$(CC) $(AFLAGS) -c start.S -o $@
 	
 $(O)/bootmenu.elf: $(OBJS)
 	$(LD) $(LDFLAGS) -T ld-script -o $(O)/bootmenu.elf $(OBJS)
