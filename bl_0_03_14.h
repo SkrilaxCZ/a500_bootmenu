@@ -197,4 +197,4 @@ extern const char* bootloader_id;
 extern const char* bootloader_version;
 
 /* MSC command */
-extern struct msc_command* msc_cmd;
+extern volatile struct msc_command* msc_cmd;
