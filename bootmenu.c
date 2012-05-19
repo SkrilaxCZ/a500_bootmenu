@@ -24,11 +24,13 @@
 /* Boot menu items - '%c' is either ">" when selected or " " when not selected */
 const char* boot_menu_items[] =
 {
-	"%c Continue\n",
+	"%c Reboot\n",
 	"%c Fastboot Mode\n",
 	"%c Boot Recovery\n",
 	"%c Set Boot Primary Kernel Image\n",
 	"%c Set Boot Secondary Kernel Image\n",
+	"%c Set Debug Mode ON\n",
+	"%c Set Debug Mode OFF\n",
 	"%c Wipe Cache\n",
 };
 
@@ -72,14 +74,26 @@ void restore_frame()
 	println_display(bootloader_id, bootloader_version);
 }
 
+/*
+ * Bootmenu error
+ */
+void error()
+{
+	new_frame();
+	println_display_error("Unrecoverable bootloader error, please reboot the device manually.");
+	
+	while (1) { }
+}
+
 /* 
- * Entry point of bootmenu: 
+ * Entry point of bootmenu 
+ * Magic is Acer BL data structure, used as parameter for some functions.
  * 
  * - keystate at boot is loaded
  * - boot partition (primary or secondary) is loaded
  * - can continue boot, and force fastboot or recovery mode
  */
-void main()
+void main(void* magic)
 {
 	/* Selected option in boot menu */
 	int selected_option = 0;
@@ -88,15 +102,24 @@ void main()
 	int key_press = -1;
 
 	/* Which kernel image is booted */
-	const char* boot_mode;
+	const char* boot_partition_str;
 	int boot_partition;
+	
+	/* Debug mode status */
+	const char* debug_mode_str;
+	int debug_mode;
 	
 	int i;
 	char c;
 		
-	/* Boot to bootmenu = volume key up during boot */
+	/* Boot to bootmenu = volume key up during boot,
+	 * or in msc command "BootmenuMode"
+	 */
 	if (!boot_key_volume_up_pressed())
-		return; /* continue booting normally */
+	{
+		if (strncmp((const char*)msc_cmd->boot_command, "BootmenuMode", strlen("BootmenuMode")))
+			return; /* continue booting normally */
+	}
 	
 	/* Reset it */
 	set_boot_normal();
@@ -105,7 +128,10 @@ void main()
 	msc_cmd_clear();
 	
 	/* Get boot partiiton */
-	boot_partition = msc_get_boot_partition();
+	boot_partition = msc_cmd->boot_mode;
+	
+	/* Get debug mode */
+	debug_mode = msc_cmd->debug_mode;
 	
 	/* Boot menu */
 	while (1)
@@ -115,11 +141,18 @@ void main()
 		
 		/* Print current boot mode */
 		if (boot_partition == 0)
-			boot_mode = "Primary";
+			boot_partition_str = "Primary";
 		else
-			boot_mode = "Secondary";
+			boot_partition_str = "Secondary";
 		
-		println_display("Current boot mode: %s kernel image\n\n\n\n", boot_mode);
+		println_display("Current boot mode: %s kernel image", boot_partition_str);
+		
+		if (debug_mode == 0)
+			debug_mode_str = "OFF";
+		else
+			debug_mode_str = "ON";
+		
+		println_display("Debug mode: %s\n\n\n\n", debug_mode_str);
 		
 		/* Print options */
 		for (i = 0; i < ARRAY_SIZE(boot_menu_items); i++)
@@ -172,8 +205,11 @@ void main()
 		{
 			switch(selected_option)
 			{
-				case 0: /* Continue */
-					restore_frame();
+				case 0: /* Reboot */
+					reboot(magic);
+					
+					/* Reboot returned*/
+					error();
 					return;
 					
 				case 1: /* Fastboot mode */
@@ -197,7 +233,19 @@ void main()
 					selected_option = 0;
 					break;
 					
-				case 5: /* Wipe cache */
+				case 5: /* Set debug mode ON */
+					msc_set_debug_mode(1);
+					debug_mode = 1;
+					selected_option = 0;
+					break;
+					
+				case 6: /* Set debug mode OFF*/
+					msc_set_debug_mode(0);
+					debug_mode = 0;
+					selected_option = 0;
+					break;
+					
+				case 7: /* Wipe cache */
 					new_frame();
 					println_display("Erasing CAC partition...");
 					format_partition("CAC");

@@ -162,6 +162,9 @@ void format_partition(const char* partition);
 /* Check for wifi only tablet (00 - wifi only, 01 - 3G modem */
 int is_wifi_only();
 
+/* Reboot (uses magic argument )*/
+void reboot(void* magic);
+
 /* ===========================================================================
  * ARM Mode functions
  * ===========================================================================

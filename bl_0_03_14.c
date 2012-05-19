@@ -119,6 +119,26 @@ void* NAKED memset(void *ptr, int value, int num)                               
 
 void  NAKED printf(const char *format, ...)                                            { ASM_ARM_BL(0x17C30C); }
 
+
+/* ===========================================================================
+ * Functions using magic argument (need to be reverse engineered properly)
+ * ===========================================================================
+ */
+void NAKED reboot(void* magic)
+{
+	/* magic is on R0 */
+	__asm__
+	(
+		"PUSH    {LR}\n"
+		"LDR     R1, =0xFFFFF9F8\n"
+		"LDR     R0, [R0,R1]\n"
+		"LDR     R0, [R0]\n"
+		"BL      0x11124C\n"
+		"POP     {PC}\n"
+	);
+	
+}
+
 /* ===========================================================================
  * Variables
  * ===========================================================================

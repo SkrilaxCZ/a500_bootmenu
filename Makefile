@@ -6,7 +6,7 @@ CC := $(CROSS_COMPILE)gcc
 LD := $(CROSS_COMPILE)ld
 OBJCOPY := $(CROSS_COMPILE)objcopy
 
-CFLAGS := -Os -Wall -Wno-return-type -fno-builtin -mthumb -fPIC -ffunction-sections
+CFLAGS := -Os -Wall -Wno-return-type -Wno-main -fno-builtin -mthumb -fPIC -ffunction-sections
 AFLAGS := -D__ASSEMBLY__ -fno-builtin -mthumb -fPIC -ffunction-sections
 LDFLAGS := -static -nostdlib --gc-sections 
 O ?= .
@@ -34,7 +34,7 @@ $(O)/bootloader_v6.bin: $(O)/bootmenu.bin
 	dd if=$(O)/bootmenu.bin of=$@ bs=1 seek=577536 conv=notrunc
 	
 clean:
-	rm $(OBJS)
-	rm $(O)/bootmenu.elf
-	rm $(O)/bootmenu.bin
-	rm $(O)/bootloader_v6.bin
+	rm -f $(OBJS)
+	rm -f $(O)/bootmenu.elf
+	rm -f $(O)/bootmenu.bin
+	rm -f $(O)/bootloader_v6.bin
