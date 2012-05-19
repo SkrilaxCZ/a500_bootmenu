@@ -131,4 +131,4 @@ const char* bootloader_id = (void*)0x18EBD4;
 const char* bootloader_version = (void*)0x18EBF8;
 
 /* Loaded command from MSC partition */
-struct msc_command* msc_cmd = (void*)0x23ECD8;
+volatile struct msc_command* msc_cmd = (void*)0x23ECD8;
