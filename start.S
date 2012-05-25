@@ -22,7 +22,15 @@
 .text
 .thumb
 
-.globl _start
+.globl _main
+.globl _fastboot_get_var
 
-_start:
-	b	main 
+.align(2)
+
+_main:
+	b		main 
+
+.align(2)
+	
+_fastboot_get_var:
+	b		fastboot_get_var

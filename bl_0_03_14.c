@@ -52,28 +52,14 @@ int  NAKED msc_get_debug_mode()                                   { ASM_THUMB_BL
 int  NAKED msc_get_boot_partition()                               { ASM_THUMB_BL(0x1102C0); }
 void NAKED msc_set_debug_mode(unsigned char debug_mode)           { ASM_THUMB_BL(0x10C088); }
 void NAKED msc_set_boot_partition(unsigned char boot_partition)   { ASM_THUMB_BL(0x10BE14); }
-void NAKED msc_write_cmd_fastboot_mode()                          { ASM_THUMB_BL(0x10BFC4); }
+void NAKED msc_set_fastboot_mode()                                { ASM_THUMB_BL(0x10BFC4); }
 void NAKED msc_cmd_clear()                                        { ASM_THUMB_BL(0x10C138); }
-
-/*
- * Stored input key state at boot time:
- * 
- * Volume UP: boot to boot menu (overrides fastboot)
- * Volume DOWN: boot to recovory (handled by the BL binary - don't do anything)
- *
- */
-
-int NAKED boot_key_volume_down_pressed()                 { ASM_THUMB_BL(0x10BDEC); }
-int NAKED boot_key_volume_up_pressed()                   { ASM_THUMB_BL(0x10BE00); }
 
 /*
  * GPIO
  */
 
 int NAKED get_gpio(int row, int column)                  { ASM_THUMB_BL(0x10C2FC); }
-int NAKED key_volume_down_pressed()                      { ASM_THUMB_BL(0x10C344); }
-int NAKED key_volume_up_pressed()                        { ASM_THUMB_BL(0x10C358); }
-int NAKED key_power_pressed()                            { ASM_THUMB_BL(0x10C36C); }
 
 /*
  * Display functions 
@@ -88,11 +74,16 @@ void NAKED clear_screen()                                { ASM_THUMB_BL(0x10EDE0
  * Miscellaneuos
  */
 
-void NAKED set_boot_normal()                             { ASM_THUMB_BL(0x110398); }
-void NAKED set_boot_recovery()                           { ASM_THUMB_BL(0x110378); }
-void NAKED set_boot_fastboot_mode()                      { ASM_THUMB_BL(0x110388); }
 void NAKED format_partition(const char* partition)       { ASM_THUMB_BL(0x11E534); }
 int  NAKED is_wifi_only()                                { ASM_THUMB_BL(0x10C5C0); }
+
+/*
+ * Booting
+ */
+
+const char* NAKED android_load_image(char** image_bytes, int* image_ep, const char* partition)          { ASM_THUMB_BL(0x10C898); }
+void        NAKED android_boot_image(char* image_bytes, int image_ep, int magic_boot_argument)          { ASM_THUMB_BL(0x10CB40); }
+
 
 /* ===========================================================================
  * ARM Mode functions
@@ -135,6 +126,23 @@ void NAKED reboot(void* magic)
 		"POP     {PC}\n"
 	);
 	
+}
+
+int  NAKED check_bootloader_update(void* magic)
+{
+	/* magic is on R0 */
+	__asm__
+	(
+		"PUSH    {LR}\n"
+		"SUB     SP, SP, #4\n"
+		"LDR     R1, =0xFFFFF9F8\n"
+		"LDR     R0, [R0,R1]\n"
+		"LDR     R0, [R0]\n"
+		"ADD     R1, SP\n" /* unused argument */
+		"BL      0x110DD8\n"
+		"ADD     SP, SP, #4\n"
+		"POP     {PC}\n"
+	);
 }
 
 /* ===========================================================================
