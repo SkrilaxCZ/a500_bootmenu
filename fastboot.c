@@ -26,7 +26,12 @@
 #define FASTBOOT_SECURE  "no"
 #define FASTBOOT_MID     "001"
 
-/* Right now, only getvar is customizable */
+#define FASTBOOT_CMD_RESP_OK    "OKAY"
+#define FASTBOOT_CMD_RESP_INFO  "INFO"
+#define FASTBOOT_CMD_RESP_FAIL  "FAIL"
+
+/* Command handlers */
+
 typedef const char*(*fb_get_var_handler)(void);
 
 struct fb_get_var_list_item
@@ -34,6 +39,19 @@ struct fb_get_var_list_item
 	const char* var_name;
 	fb_get_var_handler var_handler;
 };
+
+typedef int(*fb_oem_cmd_handler)(void* fb_magic_handler);
+
+struct fb_oem_cmd_list_item
+{
+	const char* cmd_name;
+	fb_oem_cmd_handler cmd_handler;
+};
+
+/* ===========================================================================
+ * Fastboot Get Var
+ * ===========================================================================
+ */
 
 /* Bootloader version */
 const char* fb_get_var_bootloader_version(void)
@@ -135,7 +153,10 @@ struct fb_get_var_list_item fastboot_variable_table[] = {
 	}
 };
 
-/* Fastboot get variable function */
+/* 
+ * Fastboot get variable function 
+ * Return NULL for unknown variable
+ */
 const char* fastboot_get_var(const char* cmd)
 {
 	int i;
@@ -147,4 +168,123 @@ const char* fastboot_get_var(const char* cmd)
 	}
 	
 	return NULL;
+}
+
+/* ===========================================================================
+ * Fastboot OEM command
+ * ===========================================================================
+ */
+
+/* Debug ON */
+int fb_oem_cmd_debug_on(void* fb_magic_handler)
+{
+	int fb_status;
+	const char* info_reply = FASTBOOT_CMD_RESP_INFO "Debug set to ON";
+	
+	msc_set_debug_mode(1);
+	
+	fb_status = fastboot_send(fb_magic_handler, info_reply, strlen(info_reply));
+	return fb_status != 0 && fb_status != 5;
+}
+
+/* Debug OFF */
+int fb_oem_cmd_debug_off(void* fb_magic_handler)
+{
+	int fb_status;
+	const char* info_reply = FASTBOOT_CMD_RESP_INFO "Debug set to OFF";
+	
+	msc_set_debug_mode(0);
+	
+	fb_status = fastboot_send(fb_magic_handler, info_reply, strlen(info_reply));
+	return fb_status != 0 && fb_status != 5;
+}
+
+/* Set primary boot partition */
+int fb_oem_cmd_setboot_primary(void* fb_magic_handler)
+{
+	int fb_status;
+	const char* info_reply = FASTBOOT_CMD_RESP_INFO "Set to boot primary kernel image.";
+	
+	msc_set_boot_partition(0);
+	
+	fb_status = fastboot_send(fb_magic_handler, info_reply, strlen(info_reply));
+	return fb_status != 0 && fb_status != 5;
+}
+
+/* Set secondary boot partition */
+int fb_oem_cmd_setboot_secondary(void* fb_magic_handler)
+{
+	int fb_status;
+	const char* info_reply = FASTBOOT_CMD_RESP_INFO "Set to boot secondary kernel image.";
+	
+	msc_set_boot_partition(1);
+	
+	fb_status = fastboot_send(fb_magic_handler, info_reply, strlen(info_reply));
+	return fb_status != 0 && fb_status != 5;
+}
+
+/* Lock */
+int fb_oem_cmd_oem_lock(void* fb_magic_handler)
+{
+	int fb_status;
+	const char* info_reply = FASTBOOT_CMD_RESP_INFO "Seriously, are you kidding me?"; /* Tsk :D */
+	
+	fb_status = fastboot_send(fb_magic_handler, info_reply, strlen(info_reply));
+	return fb_status != 0 && fb_status != 5;
+}
+
+/* Unlock */
+int fb_oem_cmd_oem_unlock(void* fb_magic_handler)
+{
+	int fb_status;
+	const char* info_reply = FASTBOOT_CMD_RESP_INFO "Already unlocked.";
+	
+	fb_status = fastboot_send(fb_magic_handler, info_reply, strlen(info_reply));
+	return fb_status != 0 && fb_status != 5;
+}
+
+/* List of fastboot oem commands */
+struct fb_oem_cmd_list_item fastboot_oem_command_table[] = {
+	
+	{
+		.cmd_name = "debug on",
+		.cmd_handler = &fb_oem_cmd_debug_on,
+	},
+	{
+		.cmd_name = "debug off",
+		.cmd_handler = &fb_oem_cmd_debug_off,
+	},
+	{
+		.cmd_name = "setboot b1",
+		.cmd_handler = &fb_oem_cmd_setboot_primary,
+	},
+	{
+		.cmd_name = "setboot b2",
+		.cmd_handler = &fb_oem_cmd_setboot_secondary,
+	},
+	{
+		.cmd_name = "lock",
+		.cmd_handler = &fb_oem_cmd_oem_lock,
+	},
+	{
+		.cmd_name = "unlock",
+		.cmd_handler = &fb_oem_cmd_oem_unlock,
+	},
+};
+
+/* 
+ * Fastboot oem command function.
+ * Return 00 - OK, 01 - ERROR, don't pass OKAY to PC side
+ */
+int fastboot_oem_command(const char* cmd, void* fb_magic_handler)
+{
+	int i;
+	
+	for (i = 0; i < ARRAY_SIZE(fastboot_oem_command_table); i++)
+	{
+		if (!strncmp(cmd, fastboot_oem_command_table[i].cmd_name, strlen(fastboot_oem_command_table[i].cmd_name)))
+			return fastboot_oem_command_table[i].cmd_handler(fb_magic_handler);
+	}
+	
+	return 1;
 }

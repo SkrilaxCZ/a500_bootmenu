@@ -34,3 +34,8 @@ _main:
 	
 _fastboot_get_var:
 	b		fastboot_get_var
+	
+.align(2)
+	
+_fastboot_oem_command:
+	b		fastboot_oem_command

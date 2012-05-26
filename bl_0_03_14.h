@@ -307,7 +307,7 @@ void android_boot_image(char* image_bytes, int image_ep, int magic_boot_argument
 
 /*
  * Several RE notes:
- * send / receive get some enum as return value -> 5 = OK
+ * send / receive get some enum as return value -> bootloader passes on retval 5 or 0 (and stores smth with retval 5)
  */
 
 /* 
@@ -319,12 +319,13 @@ void android_boot_image(char* image_bytes, int image_ep, int magic_boot_argument
 /*
  * Send to host
  */
-//int fastboot_send(int /* oftenly 1000 */, const char *command, int command_length, int /* oftenly 0*/);
+//int fastboot_send(void* fb_magic_handler, const char *command, int command_length, int unk3/* oftenly 0*/, int unk4/* oftenly 1000 */);
+int fastboot_send(void* fb_magic_handler, const char *command, int command_length);
 
 /*
  * Receive from host
  */
-//int fastboot_receive(int, char *received_cmd, int, int, int, int);
+//int fastboot_receive(void* fb_magic_handler, char *received_cmd, int, int, int, int);
 
 /* ===========================================================================
  * ARM Mode functions
@@ -346,6 +347,7 @@ void* malloc(int size);
 int memcmp(const void *ptr1, const void *ptr2, int num);
 void* memcpy(void *destination, const void *source, int num);
 void* memset(void *ptr, int value, int num);
+void free(void* ptr);
 
 void printf(const char *format, ...);
 

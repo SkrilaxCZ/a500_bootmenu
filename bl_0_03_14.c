@@ -84,7 +84,6 @@ int  NAKED is_wifi_only()                                { ASM_THUMB_BL(0x10C5C0
 const char* NAKED android_load_image(char** image_bytes, int* image_ep, const char* partition)          { ASM_THUMB_BL(0x10C898); }
 void        NAKED android_boot_image(char* image_bytes, int image_ep, int magic_boot_argument)          { ASM_THUMB_BL(0x10CB40); }
 
-
 /* ===========================================================================
  * ARM Mode functions
  * ===========================================================================
@@ -105,6 +104,7 @@ void* NAKED malloc(int size)                                                    
 int   NAKED memcmp(const void *ptr1, const void *ptr2, int num)                        { ASM_ARM_BL(0x17B150); }
 void* NAKED memcpy(void *destination, const void *source, int num)                     { ASM_ARM_BL(0x17B188); }
 void* NAKED memset(void *ptr, int value, int num)                                      { ASM_ARM_BL(0x17B1F0); }
+void  NAKED free(void *ptr)                                                            { ASM_ARM_BL(0x1799F0); }
 
 void  NAKED printf(const char *format, ...)                                            { ASM_ARM_BL(0x17C30C); }
 
@@ -144,6 +144,24 @@ int  NAKED check_bootloader_update(void* magic)
 		"POP     {PC}\n"
 	);
 }
+
+
+int  NAKED fastboot_send(void* fb_magic_handler, const char *command, int command_length)    
+{ 
+	__asm__
+	(
+		"PUSH    {LR}\n"
+		"SUB     SP, SP, #4\n"
+		"MOV.W   R3, #0x3E8\n"
+		"STR     R3, [SP]\n"
+		"MOV     R3, #0\n"
+		"LDR     R0, [R0]\n"
+		"BL      0x11A734\n"
+		"ADD     SP, SP, #4\n"
+		"POP     {PC}\n"
+	);
+}
+
 
 /* ===========================================================================
  * Variables
