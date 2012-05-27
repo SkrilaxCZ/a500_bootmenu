@@ -108,6 +108,7 @@ void  NAKED free(void *ptr)                                                     
 
 void  NAKED printf(const char *format, ...)                                            { ASM_ARM_BL(0x17C30C); }
 
+void  NAKED sleep(int ms)                                                              { ASM_ARM_BL(0x179F44); }
 
 /* ===========================================================================
  * Functions using magic argument (need to be reverse engineered properly)

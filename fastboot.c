@@ -288,3 +288,22 @@ int fastboot_oem_command(const char* cmd, void* fb_magic_handler)
 	
 	return 1;
 }
+
+/* ===========================================================================
+ * Fastboot continue
+ * ===========================================================================
+ */
+
+void fastboot_continue(int boot_magic_value)
+{
+	/* Reset menu */
+	bootmenu_basic_frame();
+	
+	/* Normal or recovery */
+	if (msc_boot_mode == BM_RECOVERY)
+		boot_recovery(boot_magic_value);
+	else
+		boot_normal(msc_cmd->boot_partition, boot_magic_value);
+	
+	/* Return -> fastboot error */
+}

@@ -64,6 +64,12 @@ struct gpio_key device_keys[] =
 	},
 };
 
+/* How to boot */
+enum boot_mode this_boot_mode = BM_NORMAL;
+
+/* How to boot from msc command */
+enum boot_mode msc_boot_mode = BM_NORMAL;
+
 /*
  * Is key active
  */
@@ -78,6 +84,42 @@ int get_key_active(enum key_type key)
 }
 
 /* 
+ * Wait for key event
+ */
+enum key_type wait_for_key_event()
+{
+	/* Wait for key event, debounce them first */
+	while (get_key_active(KEY_VOLUME_UP))
+		sleep(100);
+	
+	while (get_key_active(KEY_VOLUME_DOWN))
+		sleep(100);
+	
+	while (get_key_active(KEY_POWER))
+		sleep(100);
+		
+	while (1)
+	{
+		if (get_key_active(KEY_VOLUME_DOWN))
+			return KEY_VOLUME_DOWN;
+		
+		if (get_key_active(KEY_VOLUME_UP))
+			return KEY_VOLUME_UP;
+		
+		if (get_key_active(KEY_POWER))
+		{
+			/* Power key - act on releasing it */
+			while (get_key_active(KEY_POWER))
+				sleep(100);
+			
+			return KEY_POWER;
+		}
+		
+		sleep(100);
+	}
+}
+
+/* 
  * Get debug mode
  */
 int get_debug_mode(void)
@@ -88,7 +130,7 @@ int get_debug_mode(void)
 /*
  * Boot Android (returns on ERROR)
  */
-void boot_android(const char* partition, int boot_magic_value)
+void boot_android_image(const char* partition, int boot_magic_value)
 {
 	char* kernel_code = NULL;
 	int kernel_ep = 0;
@@ -100,6 +142,32 @@ void boot_android(const char* partition, int boot_magic_value)
 		return;
 	
 	android_boot_image(kernel_code, kernel_ep, boot_magic_value);
+}
+
+/*
+ * Boots normally (returns on ERROR)
+ */
+void boot_normal(int boot_partition, int boot_magic_value)
+{
+	if (boot_partition == 0)
+	{
+		println_display("Booting primary kernel image");
+		boot_android_image("LNX", boot_magic_value);
+	}
+	else
+	{
+		println_display("Booting secondary kernel image");
+		boot_android_image("AKB", boot_magic_value);
+	}
+}
+
+/*
+ * Boots to recovery (returns on ERROR)
+ */
+void boot_recovery(int boot_magic_value)
+{
+	println_display("Booting recovery kernel image");
+	boot_android_image("SOS", boot_magic_value);
 }
 
 /*
@@ -148,7 +216,8 @@ void error(void)
 	bootmenu_basic_frame();
 	println_display_error("\nUnrecoverable bootloader error, please reboot the device manually.");
 	
-	while (1) { }
+	while (1)
+		sleep(1000);
 }
 
 /* 
@@ -167,7 +236,7 @@ void main(void* magic, int magic_boot_argument)
 	int selected_option = 0;
 	
 	/* Key press: -1 nothing, 0 Vol DOWN, 1 Vol UP, 2 Power */
-	int key_press = -1;
+	enum key_type key_press = KEY_NONE;
 
 	/* Which kernel image is booted */
 	const char* boot_partition_str;
@@ -179,8 +248,7 @@ void main(void* magic, int magic_boot_argument)
 	const char* other_debug_mode_str;
 	int debug_mode;
 	
-	/* boot mode */
-	enum boot_mode my_boot_mode;
+	/* Print error, from which partition booting failed */
 	const char* boot_partition_attempt = NULL;
 	
 	int i;
@@ -191,21 +259,23 @@ void main(void* magic, int magic_boot_argument)
 	
 	/* First, check MSC command */
 	if (!strncmp((const char*)msc_cmd->boot_command, MSC_CMD_RECOVERY, strlen(MSC_CMD_RECOVERY)))
-		my_boot_mode = BM_RECOVERY;
+		this_boot_mode = BM_RECOVERY;
 	else if (!strncmp((const char*)msc_cmd->boot_command, MSC_CMD_FCTRY_RESET, strlen(MSC_CMD_FCTRY_RESET)))
-		my_boot_mode = BM_FCTRY_RESET;
+		this_boot_mode = BM_FCTRY_RESET;
 	else if (!strncmp((const char*)msc_cmd->boot_command, MSC_CMD_FASTBOOT, strlen(MSC_CMD_FASTBOOT)))
-		my_boot_mode = BM_FASTBOOT;
+		this_boot_mode = BM_FASTBOOT;
 	else if (!strncmp((const char*)msc_cmd->boot_command, MSC_CMD_BOOTMENU, strlen(MSC_CMD_BOOTMENU)))
-		my_boot_mode = BM_BOOTMENU;
+		this_boot_mode = BM_BOOTMENU;
 	else
-		my_boot_mode = BM_NORMAL;
+		this_boot_mode = BM_NORMAL;
+	
+	msc_boot_mode = this_boot_mode;
 	
 	/* Evaluate key status */
 	if (get_key_active(KEY_VOLUME_UP))
-		my_boot_mode = BM_BOOTMENU;
+		this_boot_mode = BM_BOOTMENU;
 	else if (get_key_active(KEY_VOLUME_DOWN))
-		my_boot_mode = BM_RECOVERY;
+		this_boot_mode = BM_RECOVERY;
 	
 	/* Get boot partiiton */
 	boot_partition = msc_cmd->boot_partition;
@@ -217,38 +287,37 @@ void main(void* magic, int magic_boot_argument)
 	msc_cmd_clear();
 	
 	/* Evaluate boot mode */
-	if (my_boot_mode == BM_NORMAL)
-	{		
+	if (this_boot_mode == BM_NORMAL)
+	{
 		if (boot_partition == 0)
-		{
 			boot_partition_attempt = "primary (LNX)";
-			println_display("Booting primary kernel image");
-			boot_android("LNX", magic_boot_argument);
-		}
 		else
-		{
 			boot_partition_attempt = "secondary (AKB)";
-			println_display("Booting secondary kernel image");
-			boot_android("AKB", magic_boot_argument);
-		}
+		
+		boot_normal(boot_partition, magic_boot_argument);
 	}
-	else if (my_boot_mode == BM_RECOVERY)
+	else if (this_boot_mode == BM_RECOVERY)
 	{
 		boot_partition_attempt = "recovery (SOS)";
-		println_display("Booting recovery kernel image");
-		boot_android("SOS", magic_boot_argument);
+		boot_recovery(magic_boot_argument);
 	}
-	else if (my_boot_mode == BM_FCTRY_RESET)
+	else if (this_boot_mode == BM_FCTRY_RESET)
 	{
 		println_display("Factory reset\n");
 		
 		/* Erase userdata */
-		println_display("Erasing UDA partition...");
+		println_display("Erasing UDA partition...\n");
 		format_partition("UDA");
 		 
 		/* Erase cache */
-		println_display("Erasing CAC partition...");
+		println_display("Erasing CAC partition...\n");
 		format_partition("CAC");
+		
+		/* Finished */
+		println_display("Done.");
+		
+		/* Sleep */
+		sleep(5000);
 		
 		/* Reboot */
 		reboot(magic);
@@ -256,7 +325,7 @@ void main(void* magic, int magic_boot_argument)
 		/* Reboot returned */
 		error();
 	}
-	else if (my_boot_mode == BM_FASTBOOT)
+	else if (this_boot_mode == BM_FASTBOOT)
 	{
 		/* Return -> jump to fastboot */
 		return;
@@ -319,42 +388,13 @@ void main(void* magic, int magic_boot_argument)
 				println_display(boot_menu_items[i], c);
 		}
 		
-		/* Now wait for key event, debounce them first */
-		while (get_key_active(KEY_VOLUME_UP)) { }
-		while (get_key_active(KEY_VOLUME_DOWN)) { }
-		while (get_key_active(KEY_POWER)) { }
+		key_press = wait_for_key_event();
 		
-		key_press = -1;
-		
-		while (1)
-		{
-			if (get_key_active(KEY_VOLUME_DOWN))
-			{
-				key_press = 0;
-				break;
-			}
-			
-			if (get_key_active(KEY_VOLUME_UP))
-			{
-				key_press = 1;
-				break;
-			}
-			
-			if (get_key_active(KEY_POWER))
-			{
-				/* Power key - act on releasing it */
-				while (get_key_active(KEY_POWER)) { }
-				
-				key_press = 2;
-				break;
-			}
-		}
-		
-		if (key_press < 0)
+		if (key_press == KEY_NONE)
 			continue;
 		
 		/* Volume DOWN */
-		if (key_press == 0)
+		if (key_press == KEY_VOLUME_DOWN)
 		{
 			selected_option++;
 			
@@ -365,7 +405,7 @@ void main(void* magic, int magic_boot_argument)
 		}
 		
 		/* Volume UP */
-		if (key_press == 1)
+		if (key_press == KEY_VOLUME_UP)
 		{
 			selected_option--;
 			
@@ -376,7 +416,7 @@ void main(void* magic, int magic_boot_argument)
 		}
 		
 		/* Power */
-		if (key_press == 2)
+		if (key_press == KEY_POWER)
 		{
 			switch(selected_option)
 			{
@@ -392,22 +432,19 @@ void main(void* magic, int magic_boot_argument)
 				case 2: /* Primary kernel image */
 					boot_partition_attempt = "primary (LNX)";
 					bootmenu_basic_frame();
-					println_display("Booting primary kernel image");
-					boot_android("LNX", magic_boot_argument);
+					boot_normal(0, magic_boot_argument);
 					break;
 					
 				case 3: /* Secondary kernel image */
 					boot_partition_attempt = "secondary (AKB)";
 					bootmenu_basic_frame();
-					println_display("Booting secondary kernel image");
-					boot_android("AKB", magic_boot_argument);
+					boot_normal(1, magic_boot_argument);
 					break;
 					
 				case 4: /* Recovery kernel image */
 					boot_partition_attempt = "recovery (SOS)";
 					bootmenu_basic_frame();
-					println_display("Booting recovery kernel image");
-					boot_android("SOS", magic_boot_argument);
+					boot_recovery(magic_boot_argument);
 					break;
 					
 				case 5: /* Toggle boot kernel image */

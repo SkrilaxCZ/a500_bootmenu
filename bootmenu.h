@@ -77,23 +77,37 @@ struct gpio_key
 	int active_low;
 };
 
-/* */
+/* Key type */
 enum key_type
 {
+	KEY_NONE = -1,
 	KEY_VOLUME_UP = 0,
 	KEY_VOLUME_DOWN = 1,
 	KEY_ROTATION_LOCK = 2,
 	KEY_POWER = 3
 };
 
+/* Current boot modes */
+extern enum boot_mode this_boot_mode;
+extern enum boot_mode msc_boot_mode; 
+
 /* Is key active */
 int get_key_active(enum key_type key);
+
+/* Wait for key event*/
+enum key_type wait_for_key_event();
 
 /* Get debug mode */
 int get_debug_mode(void);
 
 /* Boot android */
-void boot_android(const char* partition, int boot_magic_value);
+void boot_android_image(const char* partition, int boot_magic_value);
+
+/* Boots normally */
+void boot_normal(int boot_partition, int boot_magic_value);
+
+/* Boots recovery */
+void boot_recovery(int boot_magic_value);
 
 /* Bootmenu new frame */
 void bootmenu_new_frame(void);
