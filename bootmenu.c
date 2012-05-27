@@ -70,6 +70,9 @@ enum boot_mode this_boot_mode = BM_NORMAL;
 /* How to boot from msc command */
 enum boot_mode msc_boot_mode = BM_NORMAL;
 
+/* Full bootloader version */
+char full_bootloader_version[0x80];
+
 /*
  * Is key active
  */
@@ -176,8 +179,7 @@ void boot_recovery(int boot_magic_value)
 void bootmenu_new_frame(void)
 {
 	char buffer[0x80];
-	char* ptr;
-		
+	
 	/* clear screen */
 	clear_screen();
 	
@@ -185,9 +187,7 @@ void bootmenu_new_frame(void)
 	print_bootlogo();
 	
 	/* print id */
-	snprintf(buffer, 0x100, bootloader_id, bootloader_version);
-	ptr = &(buffer[strlen(buffer)]);
-	strncpy(ptr, ": Bootmenu Mode", strlen(": Bootmenu Mode")); 
+	snprintf(buffer, 0x80, "%s: %s", full_bootloader_version, "Bootmenu Mode"); 
 	
 	println_display(buffer);
 	println_display("Use volume keys to highlight, power to select.\n\n");
@@ -205,7 +205,7 @@ void bootmenu_basic_frame(void)
 	print_bootlogo();
 	
 	/* Print booloader ID */
-	println_display(bootloader_id, bootloader_version);
+	println_display(full_bootloader_version);
 }
 
 /*
@@ -253,6 +253,9 @@ void main(void* magic, int magic_boot_argument)
 	
 	int i;
 	char c;
+	
+	/* Fill full bootloader version */
+	snprintf(full_bootloader_version, 0x80, bootloader_id, bootloader_version);
 	
 	/* Ensure we have bootloader update */
 	check_bootloader_update(magic);

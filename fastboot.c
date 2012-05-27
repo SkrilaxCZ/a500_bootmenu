@@ -62,7 +62,7 @@ const char* fb_get_var_bootloader_version(void)
 /* Baseband version */
 const char* fb_get_var_baseband_version(void)
 {
-	return "";
+	return NULL;
 }
 
 /* Protocol version */
@@ -81,12 +81,6 @@ const char* fb_get_var_secure(void)
 const char* fb_get_var_mid(void)
 {
 	return FASTBOOT_MID;
-}
-
-/* Product */
-const char* fb_get_var_product(void)
-{
-	return "Picasso";
 }
 
 /* Wifi only */
@@ -116,16 +110,25 @@ const char* fb_get_var_debug_mode(void)
 		return "yes";
 }
 
+/* Product */
+const char* fb_get_var_product(void)
+{
+	if (is_wifi_only())
+		return "a500_ww_gen1";
+	else
+		return "a501_ww_gen1";
+}
+
 /* List of fastboot variables */
-struct fb_get_var_list_item fastboot_variable_table[] = {
-	
+struct fb_get_var_list_item fastboot_variable_table[] = 
+{
 	{
 		.var_name = "version-bootloader",
 		.var_handler = &fb_get_var_bootloader_version,
 	},
 	{
 		.var_name = "version-baseband",
-		.var_handler = &fb_get_var_bootloader_version,
+		.var_handler = &fb_get_var_baseband_version,
 	},
 	{
 		.var_name = "version",
@@ -150,6 +153,10 @@ struct fb_get_var_list_item fastboot_variable_table[] = {
 	{
 		.var_name = "debugmode",
 		.var_handler = &fb_get_var_debug_mode,
+	},
+	{
+		.var_name = "product",
+		.var_handler = &fb_get_var_product,
 	}
 };
 
@@ -244,8 +251,8 @@ int fb_oem_cmd_oem_unlock(void* fb_magic_handler)
 }
 
 /* List of fastboot oem commands */
-struct fb_oem_cmd_list_item fastboot_oem_command_table[] = {
-	
+struct fb_oem_cmd_list_item fastboot_oem_command_table[] = 
+{
 	{
 		.cmd_name = "debug on",
 		.cmd_handler = &fb_oem_cmd_debug_on,

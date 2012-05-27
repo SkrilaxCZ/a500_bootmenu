@@ -37,10 +37,5 @@ SECTIONS
 
 	. = ALIGN(4);
 	.got : { *(.got) }
-
-	. = ALIGN(4);
-	.bss : { *(.bss) }
-
-	__bss_end = .;
 }
 

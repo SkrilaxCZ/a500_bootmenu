@@ -91,6 +91,9 @@ enum key_type
 extern enum boot_mode this_boot_mode;
 extern enum boot_mode msc_boot_mode; 
 
+/* Full bootloader version */
+extern char full_bootloader_version[0x80];
+
 /* Is key active */
 int get_key_active(enum key_type key);
 
