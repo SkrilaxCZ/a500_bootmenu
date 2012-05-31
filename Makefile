@@ -6,13 +6,16 @@ CC := $(CROSS_COMPILE)gcc
 LD := $(CROSS_COMPILE)ld
 OBJCOPY := $(CROSS_COMPILE)objcopy
 
+HOST_CC := gcc
+HOST_CFLAGS :=
+
 CFLAGS := -Os -Wall -Wno-return-type -Wno-main -fno-builtin -mthumb -ffunction-sections
 AFLAGS := -D__ASSEMBLY__ -fno-builtin -mthumb -fPIC -ffunction-sections
 LDFLAGS := -static -nostdlib --gc-sections 
 O ?= .
 OBJS := $(O)/start.o $(O)/bl_0_03_14.o $(O)/bootmenu.o $(O)/fastboot.o 
 
-all: $(O)/bootloader_v7.bin
+all: $(O)/bootloader_v7.bin $(O)/bootloader_v7.blob
 
 $(O)/start.o:
 	$(CC) $(AFLAGS) -c start.S -o $@
@@ -36,8 +39,19 @@ $(O)/bootloader_v7.bin: $(O)/bootmenu.bin
 	cp -f bootloader.bin $@
 	dd if=$(O)/bootmenu.bin of=$@ bs=1 seek=577536 conv=notrunc
 	
+$(O)/blobmaker:
+	$(HOST_CC)  $(HOST_CFLAGS) blobmaker.c -o $@
+	
+$(O)/bootloader_v7.blob: $(O)/blobmaker $(O)/bootloader_v7.bin
+	$(O)/blobmaker $(O)/bootloader_v7.bin $@
+	
+	
+.PHONY: clean
+
 clean:
 	rm -f $(OBJS)
+	rm -f $(O)/blobmaker
 	rm -f $(O)/bootmenu.elf
 	rm -f $(O)/bootmenu.bin
 	rm -f $(O)/bootloader_v7.bin
+	rm -f $(O)/bootloader_v7.blob

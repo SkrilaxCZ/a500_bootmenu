@@ -241,12 +241,10 @@ void main(void* magic, int magic_boot_argument)
 	/* Which kernel image is booted */
 	const char* boot_partition_str;
 	const char* other_boot_partition_str;
-	int boot_partition;
 	
 	/* Debug mode status */
 	const char* debug_mode_str;
 	const char* other_debug_mode_str;
-	int debug_mode;
 	
 	/* Print error, from which partition booting failed */
 	const char* boot_partition_attempt = NULL;
@@ -279,25 +277,19 @@ void main(void* magic, int magic_boot_argument)
 		this_boot_mode = BM_BOOTMENU;
 	else if (get_key_active(KEY_VOLUME_DOWN))
 		this_boot_mode = BM_RECOVERY;
-	
-	/* Get boot partiiton */
-	boot_partition = msc_cmd->boot_partition;
-	
-	/* Get debug mode */
-	debug_mode = msc_cmd->debug_mode;
-	
+		
 	/* Clear msc command */
 	msc_cmd_clear();
 	
 	/* Evaluate boot mode */
 	if (this_boot_mode == BM_NORMAL)
 	{
-		if (boot_partition == 0)
+		if (msc_cmd->boot_partition == 0)
 			boot_partition_attempt = "primary (LNX)";
 		else
 			boot_partition_attempt = "secondary (AKB)";
 		
-		boot_normal(boot_partition, magic_boot_argument);
+		boot_normal(msc_cmd->boot_partition, magic_boot_argument);
 	}
 	else if (this_boot_mode == BM_RECOVERY)
 	{
@@ -343,7 +335,7 @@ void main(void* magic, int magic_boot_argument)
 		bootmenu_new_frame();
 		
 		/* Print current boot mode */
-		if (boot_partition == 0)
+		if (msc_cmd->boot_partition == 0)
 		{
 			boot_partition_str = "Primary";
 			other_boot_partition_str = "Secondary";
@@ -356,7 +348,7 @@ void main(void* magic, int magic_boot_argument)
 		
 		println_display("Current boot mode: %s kernel image", boot_partition_str);
 		
-		if (debug_mode == 0)
+		if (msc_cmd->debug_mode == 0)
 		{
 			debug_mode_str = "OFF";
 			other_debug_mode_str = "ON";
@@ -451,14 +443,18 @@ void main(void* magic, int magic_boot_argument)
 					break;
 					
 				case 5: /* Toggle boot kernel image */
-					boot_partition = !boot_partition;
-					msc_set_boot_partition(boot_partition);
+					
+					/* FIXME: Fix MSC command handling in Acer BL */
+					msc_set_boot_partition(!msc_cmd->boot_partition);
+					msc_cmd->boot_partition = !msc_cmd->boot_partition;
 					selected_option = 0;
 					break;
 					
 				case 6: /* Toggle debug mode */
-					debug_mode = !debug_mode;
-					msc_set_debug_mode(debug_mode);
+					
+					/* FIXME: Fix MSC command handling in Acer BL */
+					msc_set_debug_mode(!msc_cmd->debug_mode);
+					msc_cmd->debug_mode = !msc_cmd->debug_mode;
 					selected_option = 0;
 					break;
 					

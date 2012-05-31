@@ -90,7 +90,7 @@ const char* fb_get_var_mid(void)
 /* Get serial number */
 const char* fb_get_var_serialno(void)
 {
-	int serial_no[2];
+	unsigned int serial_no[2];
 	
 	get_serial_no(serial_no);
 	
@@ -124,9 +124,9 @@ const char* fb_get_var_boot_partition(void)
 const char* fb_get_var_debug_mode(void)
 {
 	if (msc_cmd->debug_mode == 0)
-		return "no";
+		return "OFF";
 	else
-		return "yes";
+		return "ON";
 }
 
 /* Product */
@@ -205,16 +205,21 @@ const char* fastboot_get_var(const char* cmd)
  * ===========================================================================
  */
 
+/* This is taken from the BL, which reacts positively on return value 0 and 5 */
+inline int fb_status_ok(int status) { return status != 0 && status != 5; }
+
 /* Debug ON */
 int fb_oem_cmd_debug_on(void* fb_magic_handler)
 {
 	int fb_status;
 	const char* info_reply = FASTBOOT_CMD_RESP_INFO "Debug set to ON";
 	
+	/* FIXME: Fix MSC command handling in Acer BL */
 	msc_set_debug_mode(1);
+	msc_cmd->debug_mode = 1;
 	
 	fb_status = fastboot_send(fb_magic_handler, info_reply, strlen(info_reply));
-	return fb_status != 0 && fb_status != 5;
+	return fb_status_ok(fb_status);
 }
 
 /* Debug OFF */
@@ -223,10 +228,12 @@ int fb_oem_cmd_debug_off(void* fb_magic_handler)
 	int fb_status;
 	const char* info_reply = FASTBOOT_CMD_RESP_INFO "Debug set to OFF";
 	
+	/* FIXME: Fix MSC command handling in Acer BL */
 	msc_set_debug_mode(0);
+	msc_cmd->debug_mode = 0;
 	
 	fb_status = fastboot_send(fb_magic_handler, info_reply, strlen(info_reply));
-	return fb_status != 0 && fb_status != 5;
+	return fb_status_ok(fb_status);
 }
 
 /* Set primary boot partition */
@@ -235,10 +242,12 @@ int fb_oem_cmd_setboot_primary(void* fb_magic_handler)
 	int fb_status;
 	const char* info_reply = FASTBOOT_CMD_RESP_INFO "Set to boot primary kernel image.";
 	
+	/* FIXME: Fix MSC command handling in Acer BL */
 	msc_set_boot_partition(0);
+	msc_cmd->boot_partition = 0;
 	
 	fb_status = fastboot_send(fb_magic_handler, info_reply, strlen(info_reply));
-	return fb_status != 0 && fb_status != 5;
+	return fb_status_ok(fb_status);
 }
 
 /* Set secondary boot partition */
@@ -247,10 +256,12 @@ int fb_oem_cmd_setboot_secondary(void* fb_magic_handler)
 	int fb_status;
 	const char* info_reply = FASTBOOT_CMD_RESP_INFO "Set to boot secondary kernel image.";
 	
+	/* FIXME: Fix MSC command handling in Acer BL */
 	msc_set_boot_partition(1);
+	msc_cmd->boot_partition = 1;
 	
 	fb_status = fastboot_send(fb_magic_handler, info_reply, strlen(info_reply));
-	return fb_status != 0 && fb_status != 5;
+	return fb_status_ok(fb_status);
 }
 
 /* Lock */
@@ -260,7 +271,7 @@ int fb_oem_cmd_oem_lock(void* fb_magic_handler)
 	const char* info_reply = FASTBOOT_CMD_RESP_INFO "Seriously, are you kidding me?"; /* Tsk :D */
 	
 	fb_status = fastboot_send(fb_magic_handler, info_reply, strlen(info_reply));
-	return fb_status != 0 && fb_status != 5;
+	return fb_status_ok(fb_status);
 }
 
 /* Unlock */
@@ -270,7 +281,7 @@ int fb_oem_cmd_oem_unlock(void* fb_magic_handler)
 	const char* info_reply = FASTBOOT_CMD_RESP_INFO "Already unlocked.";
 	
 	fb_status = fastboot_send(fb_magic_handler, info_reply, strlen(info_reply));
-	return fb_status != 0 && fb_status != 5;
+	return fb_status_ok(fb_status);
 }
 
 /* List of fastboot oem commands */

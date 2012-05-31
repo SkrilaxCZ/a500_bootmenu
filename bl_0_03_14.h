@@ -116,7 +116,7 @@ void format_partition(const char* partition);
 int is_wifi_only();
 
 /* Get serial info */
-void get_serial_no(int* serial_no);
+void get_serial_no(unsigned int* serial_no);
 
 /* Reboot (uses magic argument )*/
 void reboot(void* magic);
@@ -368,4 +368,4 @@ extern const char* bootloader_id;
 extern const char* bootloader_version;
 
 /* MSC command */
-extern volatile struct msc_command* msc_cmd;
+extern struct msc_command* msc_cmd;

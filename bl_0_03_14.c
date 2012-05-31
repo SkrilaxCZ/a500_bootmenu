@@ -148,7 +148,7 @@ int  NAKED check_bootloader_update(void* magic)
 	);
 }
 
-void NAKED get_serial_no(int* serial_no)
+void NAKED get_serial_no(unsigned int* serial_no)
 {
 	__asm__
 	(
@@ -190,4 +190,4 @@ const char* bootloader_id = (void*)0x18EBD4;
 const char* bootloader_version = (void*)0x18EBF8;
 
 /* Loaded command from MSC partition */
-volatile struct msc_command* msc_cmd = (void*)0x23ECD8;
+struct msc_command* msc_cmd = (void*)0x23ECD8;
