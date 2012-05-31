@@ -30,6 +30,10 @@
 #define FASTBOOT_CMD_RESP_INFO  "INFO"
 #define FASTBOOT_CMD_RESP_FAIL  "FAIL"
 
+/* Storage */
+
+char serial_no_buf[0x20];
+
 /* Command handlers */
 
 typedef const char*(*fb_get_var_handler)(void);
@@ -81,6 +85,21 @@ const char* fb_get_var_secure(void)
 const char* fb_get_var_mid(void)
 {
 	return FASTBOOT_MID;
+}
+
+/* Get serial number */
+const char* fb_get_var_serialno(void)
+{
+	int serial_no[2];
+	
+	get_serial_no(serial_no);
+	
+	if (serial_no[0] == 0 && serial_no[1] == 0)
+		return "";
+	
+	snprintf(serial_no_buf, ARRAY_SIZE(serial_no_buf), "%08x%08x", serial_no[1], serial_no[0]);
+	
+	return serial_no_buf;
 }
 
 /* Wifi only */
@@ -141,6 +160,10 @@ struct fb_get_var_list_item fastboot_variable_table[] =
 	{
 		.var_name = "mid",
 		.var_handler = &fb_get_var_mid,
+	},
+	{
+		.var_name = "serialno",
+		.var_handler = &fb_get_var_serialno,
 	},
 	{
 		.var_name = "wifi-only",
@@ -303,7 +326,7 @@ int fastboot_oem_command(const char* cmd, void* fb_magic_handler)
 
 void fastboot_continue(int boot_magic_value)
 {
-	/* Reset menu */
+	/* Display */
 	bootmenu_basic_frame();
 	
 	/* Normal or recovery */
@@ -311,6 +334,25 @@ void fastboot_continue(int boot_magic_value)
 		boot_recovery(boot_magic_value);
 	else
 		boot_normal(msc_cmd->boot_partition, boot_magic_value);
+	
+	/* Return -> fastboot error */
+}
+
+/* ===========================================================================
+ * Fastboot download
+ * ===========================================================================
+ */
+
+void fastboot_download(char* image_bytes, int image_ep, int magic_boot_argument)
+{
+	/* Display */
+	bootmenu_basic_frame();
+	
+	/* Write message */
+	println_display("Booting downloaded kernel image");
+	
+	/* Boot it */
+	android_boot_image(image_bytes, image_ep, magic_boot_argument);
 	
 	/* Return -> fastboot error */
 }

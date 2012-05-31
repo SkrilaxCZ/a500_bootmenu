@@ -26,6 +26,7 @@
 .globl _fastboot_get_var
 .globl _fastboot_oem_command
 .globl _fastboot_continue
+.globl _fastboot_download
 
 .align(2)
 
@@ -46,3 +47,8 @@ _fastboot_oem_command:
 
 _fastboot_continue:
 	b		fastboot_continue
+
+.align(2)
+
+_fastboot_download:
+	b		fastboot_download

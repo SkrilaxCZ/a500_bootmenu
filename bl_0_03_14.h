@@ -115,6 +115,9 @@ void format_partition(const char* partition);
 /* Check for wifi only tablet (00 - wifi only, 01 - 3G modem */
 int is_wifi_only();
 
+/* Get serial info */
+void get_serial_no(int* serial_no);
+
 /* Reboot (uses magic argument )*/
 void reboot(void* magic);
 

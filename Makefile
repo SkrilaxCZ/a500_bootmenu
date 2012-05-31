@@ -6,7 +6,7 @@ CC := $(CROSS_COMPILE)gcc
 LD := $(CROSS_COMPILE)ld
 OBJCOPY := $(CROSS_COMPILE)objcopy
 
-CFLAGS := -Os -Wall -Wno-return-type -Wno-main -fno-builtin -mthumb -fPIC -ffunction-sections
+CFLAGS := -Os -Wall -Wno-return-type -Wno-main -fno-builtin -mthumb -ffunction-sections
 AFLAGS := -D__ASSEMBLY__ -fno-builtin -mthumb -fPIC -ffunction-sections
 LDFLAGS := -static -nostdlib --gc-sections 
 O ?= .

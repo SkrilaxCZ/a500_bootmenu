@@ -141,13 +141,25 @@ int  NAKED check_bootloader_update(void* magic)
 		"LDR     R1, =0xFFFFF9F8\n"
 		"LDR     R0, [R0,R1]\n"
 		"LDR     R0, [R0]\n"
-		"ADD     R1, SP\n" /* unused argument */
+		"MOV     R1, SP\n" /* unused argument */
 		"BL      0x110DD8\n"
 		"ADD     SP, SP, #4\n"
 		"POP     {PC}\n"
 	);
 }
 
+void NAKED get_serial_no(int* serial_no)
+{
+	__asm__
+	(
+		"PUSH    {LR}\n"
+		"MOV     R2, R0\n"
+		"MOV     R1, #8\n"
+		"LDR     R0, =0x24BB40\n"
+		"BL      0x153E94\n"
+		"POP     {PC}\n"
+	);
+}
 
 int  NAKED fastboot_send(void* fb_magic_handler, const char *command, int command_length)    
 { 
