@@ -22,6 +22,7 @@
 #include <stddef.h>
 #include <bl_0_03_14.h> 
 #include <bootmenu.h>
+#include <byteorder.h>
 
 #define FASTBOOT_VERSION "0.4"
 #define FASTBOOT_SECURE  "no"
@@ -52,6 +53,30 @@ struct fb_oem_cmd_list_item
 	const char* cmd_name;
 	fb_oem_cmd_handler cmd_handler;
 };
+
+/* ===========================================================================
+ * Fastboot GUI
+ * ===========================================================================
+ */
+
+/*
+ * Clear screen & Print ID
+ */
+void fastboot_new_frame(void)
+{
+	char buffer[0x80];
+	
+	/* clear screen */
+	clear_screen();
+	
+	/* print bootlogo */
+	print_bootlogo();
+	
+	/* print id */
+	snprintf(buffer, 0x80, "%s: %s\n", full_bootloader_version, "Fastboot Mode"); 
+	
+	println_display(buffer);
+}
 
 /* ===========================================================================
  * Fastboot Get Var
@@ -209,15 +234,90 @@ const char* fastboot_get_var(const char* cmd)
 /* This is taken from the BL, which reacts positively on return value 0 and 5 */
 inline int fb_status_ok(int status) { return status != 0 && status != 5; }
 
+/* SBK */
+int fb_oem_cmd_sbk(void* fb_magic_handler)
+{
+	int fb_status;
+	uint32_t serial_no[2];
+	uint32_t sbk[4];
+	const char* bad_serial_reply = FASTBOOT_CMD_RESP_INFO "Invalid serial number.";
+	const char* sbk_reply = FASTBOOT_CMD_RESP_INFO "SBK is displayed on the tablet. Press POWER key to continue.";
+	enum key_type key;
+	
+	int i, j, s_dig, s_char, cnt_a, cnt_b, mult;
+	
+	get_serial_no(serial_no);
+	
+	if (serial_no[0] == 0 && serial_no[1] == 0)
+	{
+		fb_status = fastboot_send(fb_magic_handler, bad_serial_reply, strlen(bad_serial_reply));
+		return fb_status_ok(fb_status);
+	}
+	
+	/* Calculate SBK */
+	memset(sbk, 0, sizeof(sbk));
+	
+	for (i = 0; i < 2; i++)
+	{
+		cnt_a = 0;
+		cnt_b = 0;
+		mult = 1;
+		
+		for (j = 0; j < 4; j++)
+		{
+			s_dig = (serial_no[i] >> (4 * j)) & 0xF;
+			
+			if (s_dig >= 0xA)
+				s_char = s_dig - 0xA + 'A';
+			else
+				s_char = s_dig + '0';
+			
+			cnt_b += mult * s_char;
+			
+			s_dig = (serial_no[i] >> (4 * (4 + j))) & 0xF;
+			
+			if (s_dig >= 0xA)
+				s_char = s_dig - 0xA + 'A';
+			else
+				s_char = s_dig + '0';
+			
+			cnt_a += mult * s_char;
+			
+			mult *= 100;
+		}
+		
+		sbk[2*i] = cnt_a;
+		sbk[2*i + 1] = cnt_b;
+	}
+	
+	for (i = 0; i < 4; i++)
+		sbk[i] ^= sbk[3 - i];
+	
+	fastboot_new_frame();
+	
+	println_display("Displaying your SBK to be used with nvflash.");
+	println_display("Press POWER to continue.\n");
+	println_display("SBK: 0x%08x 0x%08x 0x%08x 0x%08x", ___swab32(sbk[0]), ___swab32(sbk[1]), ___swab32(sbk[2]), ___swab32(sbk[3]));
+
+	fb_status = fastboot_send(fb_magic_handler, sbk_reply, strlen(sbk_reply));
+	
+	do
+	{
+		key = wait_for_key_event();
+	} while (key != KEY_POWER);
+	
+	fastboot_new_frame();
+	return fb_status;
+}
+
 /* Debug ON */
 int fb_oem_cmd_debug_on(void* fb_magic_handler)
 {
 	int fb_status;
 	const char* info_reply = FASTBOOT_CMD_RESP_INFO "Debug set to ON";
 	
-	/* FIXME: Fix MSC command handling in Acer BL */
-	msc_set_debug_mode(1);
 	msc_cmd->debug_mode = 1;
+	msc_cmd_write();
 	
 	fb_status = fastboot_send(fb_magic_handler, info_reply, strlen(info_reply));
 	return fb_status_ok(fb_status);
@@ -228,10 +328,9 @@ int fb_oem_cmd_debug_off(void* fb_magic_handler)
 {
 	int fb_status;
 	const char* info_reply = FASTBOOT_CMD_RESP_INFO "Debug set to OFF";
-	
-	/* FIXME: Fix MSC command handling in Acer BL */
-	msc_set_debug_mode(0);
+
 	msc_cmd->debug_mode = 0;
+	msc_cmd_write();
 	
 	fb_status = fastboot_send(fb_magic_handler, info_reply, strlen(info_reply));
 	return fb_status_ok(fb_status);
@@ -243,9 +342,8 @@ int fb_oem_cmd_setboot_primary(void* fb_magic_handler)
 	int fb_status;
 	const char* info_reply = FASTBOOT_CMD_RESP_INFO "Set to boot primary kernel image.";
 	
-	/* FIXME: Fix MSC command handling in Acer BL */
-	msc_set_boot_partition(0);
 	msc_cmd->boot_partition = 0;
+	msc_cmd_write();
 	
 	fb_status = fastboot_send(fb_magic_handler, info_reply, strlen(info_reply));
 	return fb_status_ok(fb_status);
@@ -257,9 +355,8 @@ int fb_oem_cmd_setboot_secondary(void* fb_magic_handler)
 	int fb_status;
 	const char* info_reply = FASTBOOT_CMD_RESP_INFO "Set to boot secondary kernel image.";
 	
-	/* FIXME: Fix MSC command handling in Acer BL */
-	msc_set_boot_partition(1);
 	msc_cmd->boot_partition = 1;
+	msc_cmd_write();
 	
 	fb_status = fastboot_send(fb_magic_handler, info_reply, strlen(info_reply));
 	return fb_status_ok(fb_status);
@@ -288,6 +385,10 @@ int fb_oem_cmd_oem_unlock(void* fb_magic_handler)
 /* List of fastboot oem commands */
 struct fb_oem_cmd_list_item fastboot_oem_command_table[] = 
 {
+	{
+		.cmd_name = "sbk",
+		.cmd_handler = &fb_oem_cmd_sbk,
+	},
 	{
 		.cmd_name = "debug on",
 		.cmd_handler = &fb_oem_cmd_debug_on,

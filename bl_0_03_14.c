@@ -47,15 +47,9 @@
  * Misc partition commands
  */
 
-int  NAKED msc_cmd_factory_reset()                                { ASM_THUMB_B(0x10C214); }
-int  NAKED msc_cmd_boot_fastboot()                                { ASM_THUMB_B(0x10C1B4); }
-int  NAKED msc_cmd_boot_recovery()                                { ASM_THUMB_B(0x10C1E4); }
-int  NAKED msc_get_debug_mode()                                   { ASM_THUMB_B(0x10BDC4); }
-int  NAKED msc_get_boot_partition()                               { ASM_THUMB_B(0x1102C0); }
-void NAKED msc_set_debug_mode(unsigned char debug_mode)           { ASM_THUMB_B(0x10C088); }
-void NAKED msc_set_boot_partition(unsigned char boot_partition)   { ASM_THUMB_B(0x10BE14); }
-void NAKED msc_set_fastboot_mode()                                { ASM_THUMB_B(0x10BFC4); }
-void NAKED msc_cmd_clear()                                        { ASM_THUMB_B(0x10C138); }
+void NAKED msc_cmd_read()                                { ASM_THUMB_B(0x10BF2C); }
+void NAKED msc_cmd_write()                               { ASM_THUMB_B(0x10C088); }
+void NAKED msc_cmd_clear()                               { ASM_THUMB_B(0x10C138); }
 
 /*
  * GPIO

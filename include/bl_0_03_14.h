@@ -42,31 +42,13 @@
  * Misc partition commands
  */
 
-/* Wheter to do factory reset */
-int msc_cmd_factory_reset();
+/* Read MSC command */
+void msc_cmd_read();
 
-/* Wheter to boot fastboot */
-int msc_cmd_boot_fastboot();
+/* Write MSC command */
+void msc_cmd_write();
 
-/* Whether to boot to recovery */
-int msc_cmd_boot_recovery();
-
-/* Check debug mode */
-int msc_get_debug_mode();
-
-/* V5 bootloader: Check boot partition (00 - LNX, 01 - AKB) */
-int msc_get_boot_partition();
-
-/* Set debug mode */
-void msc_set_debug_mode(unsigned char debug_mode);
-
-/* V5 bootloader: Set boot partition (00 - LNX, 01 - AKB) */
-void msc_set_boot_partition(unsigned char boot_partition);
-
-/* Write fastboot mode reboot command */
-void msc_set_fastboot_mode();
-
-/* Remove msc command for boot mode */
+/* Clear MSC command */
 void msc_cmd_clear();
 
 /* Update bootloader if we have the blob (partially related to msc) 

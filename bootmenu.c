@@ -445,17 +445,15 @@ void main(void* magic, int magic_boot_argument)
 					
 				case 5: /* Toggle boot kernel image */
 					
-					/* FIXME: Fix MSC command handling in Acer BL */
-					msc_set_boot_partition(!msc_cmd->boot_partition);
 					msc_cmd->boot_partition = !msc_cmd->boot_partition;
+					msc_cmd_write();
 					selected_option = 0;
 					break;
 					
 				case 6: /* Toggle debug mode */
 					
-					/* FIXME: Fix MSC command handling in Acer BL */
-					msc_set_debug_mode(!msc_cmd->debug_mode);
 					msc_cmd->debug_mode = !msc_cmd->debug_mode;
+					msc_cmd_write();
 					selected_option = 0;
 					break;
 					
