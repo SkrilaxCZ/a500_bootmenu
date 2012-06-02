@@ -9,7 +9,7 @@ OBJCOPY := $(CROSS_COMPILE)objcopy
 HOST_CC := gcc
 HOST_CFLAGS :=
 
-CFLAGS := -Os -Wall -Wno-return-type -Wno-main -fno-builtin -mthumb -ffunction-sections
+CFLAGS := -Os -Wall -Wno-return-type -Wno-main -fno-builtin -mthumb -ffunction-sections -Iinclude
 AFLAGS := -D__ASSEMBLY__ -fno-builtin -mthumb -fPIC -ffunction-sections
 LDFLAGS := -static -nostdlib --gc-sections 
 O ?= .
@@ -17,17 +17,11 @@ OBJS := $(O)/start.o $(O)/bl_0_03_14.o $(O)/bootmenu.o $(O)/fastboot.o
 
 all: $(O)/bootloader_v7.bin $(O)/bootloader_v7.blob
 
-$(O)/start.o:
-	$(CC) $(AFLAGS) -c start.S -o $@
+$(O)/%.o : %.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
-$(O)/bl_0_03_14.o:
-	$(CC) $(CFLAGS) -c bl_0_03_14.c -o $@
-
-$(O)/bootmenu.o:
-	$(CC) $(CFLAGS) -c bootmenu.c -o $@
-
-$(O)/fastboot.o:
-	$(CC) $(CFLAGS) -c fastboot.c -o $@
+$(O)/%.o : %.S
+	$(CC) $(AFLAGS) -c $< -o $@
 
 $(O)/bootmenu.elf: $(OBJS)
 	$(LD) $(LDFLAGS) -T ld-script -o $(O)/bootmenu.elf $(OBJS)

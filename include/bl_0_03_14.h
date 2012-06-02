@@ -29,14 +29,6 @@
  * This file contains only functions that are linked to the bootloader binary.
  */
 
-#ifndef NULL
-#define NULL ((void*)0)
-#endif
-
-#ifndef ARRAY_SIZE
-#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
-#endif
-
 #ifndef __thumb__
 #error Thumb mode must be used.
 #endif

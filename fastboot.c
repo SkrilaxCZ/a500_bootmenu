@@ -19,8 +19,9 @@
  *
  */
 
-#include "bl_0_03_14.h" 
-#include "bootmenu.h"
+#include <stddef.h>
+#include <bl_0_03_14.h> 
+#include <bootmenu.h>
 
 #define FASTBOOT_VERSION "0.4"
 #define FASTBOOT_SECURE  "no"
@@ -90,7 +91,7 @@ const char* fb_get_var_mid(void)
 /* Get serial number */
 const char* fb_get_var_serialno(void)
 {
-	unsigned int serial_no[2];
+	uint32_t serial_no[2];
 	
 	get_serial_no(serial_no);
 	

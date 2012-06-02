@@ -19,8 +19,9 @@
  *
  */
 
-#include "bl_0_03_14.h"
-#include "bootmenu.h"
+#include <stddef.h>
+#include <bl_0_03_14.h>
+#include <bootmenu.h>
 
 /* Boot menu items - '%c' is either ">" when selected or " " when not selected */
 const char* boot_menu_items[] =
