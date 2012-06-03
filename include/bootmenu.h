@@ -87,6 +87,13 @@ enum key_type
 	KEY_POWER = 3
 };
 
+/*
+ * Globals
+ */
+
+/* MSC command */
+extern struct msc_command msc_cmd;
+
 /* Current boot modes */
 extern enum boot_mode this_boot_mode;
 extern enum boot_mode msc_boot_mode; 
@@ -94,14 +101,29 @@ extern enum boot_mode msc_boot_mode;
 /* Full bootloader version */
 extern char full_bootloader_version[0x80];
 
+/*
+ * Key handling
+ */
+
 /* Is key active */
 int get_key_active(enum key_type key);
 
 /* Wait for key event*/
 enum key_type wait_for_key_event();
 
-/* Get debug mode */
-int get_debug_mode(void);
+/*
+ * Misc partition
+ */
+
+/* Read MSC command */
+void msc_cmd_read();
+
+/* Write MSC command */
+void msc_cmd_write();
+
+/*
+ * Booting
+ */
 
 /* Boot android */
 void boot_android_image(const char* partition, int boot_magic_value);

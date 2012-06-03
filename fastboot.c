@@ -46,7 +46,7 @@ struct fb_get_var_list_item
 	fb_get_var_handler var_handler;
 };
 
-typedef int(*fb_oem_cmd_handler)(void* fb_magic_handler);
+typedef int(*fb_oem_cmd_handler)(void* fb_handle);
 
 struct fb_oem_cmd_list_item
 {
@@ -140,7 +140,7 @@ const char* fb_get_var_wifi_only(void)
 /* Boot partition */
 const char* fb_get_var_boot_partition(void)
 {
-	if (msc_cmd->boot_partition == 0)
+	if (msc_cmd.boot_partition == 0)
 		return "b1";
 	else
 		return "b2";
@@ -149,7 +149,7 @@ const char* fb_get_var_boot_partition(void)
 /* Debug mode */
 const char* fb_get_var_debug_mode(void)
 {
-	if (msc_cmd->debug_mode == 0)
+	if (msc_cmd.debug_mode == 0)
 		return "OFF";
 	else
 		return "ON";
@@ -235,7 +235,7 @@ const char* fastboot_get_var(const char* cmd)
 inline int fb_status_ok(int status) { return status != 0 && status != 5; }
 
 /* SBK */
-int fb_oem_cmd_sbk(void* fb_magic_handler)
+int fb_oem_cmd_sbk(void* fb_handle)
 {
 	int fb_status;
 	uint32_t serial_no[2];
@@ -250,7 +250,7 @@ int fb_oem_cmd_sbk(void* fb_magic_handler)
 	
 	if (serial_no[0] == 0 && serial_no[1] == 0)
 	{
-		fb_status = fastboot_send(fb_magic_handler, bad_serial_reply, strlen(bad_serial_reply));
+		fb_status = fastboot_send(fb_handle, bad_serial_reply, strlen(bad_serial_reply));
 		return fb_status_ok(fb_status);
 	}
 	
@@ -299,7 +299,7 @@ int fb_oem_cmd_sbk(void* fb_magic_handler)
 	println_display("Press POWER to continue.\n");
 	println_display("SBK: 0x%08x 0x%08x 0x%08x 0x%08x", ___swab32(sbk[0]), ___swab32(sbk[1]), ___swab32(sbk[2]), ___swab32(sbk[3]));
 
-	fb_status = fastboot_send(fb_magic_handler, sbk_reply, strlen(sbk_reply));
+	fb_status = fastboot_send(fb_handle, sbk_reply, strlen(sbk_reply));
 	
 	do
 	{
@@ -311,74 +311,74 @@ int fb_oem_cmd_sbk(void* fb_magic_handler)
 }
 
 /* Debug ON */
-int fb_oem_cmd_debug_on(void* fb_magic_handler)
+int fb_oem_cmd_debug_on(void* fb_handle)
 {
 	int fb_status;
 	const char* info_reply = FASTBOOT_CMD_RESP_INFO "Debug set to ON";
 	
-	msc_cmd->debug_mode = 1;
+	msc_cmd.debug_mode = 1;
 	msc_cmd_write();
 	
-	fb_status = fastboot_send(fb_magic_handler, info_reply, strlen(info_reply));
+	fb_status = fastboot_send(fb_handle, info_reply, strlen(info_reply));
 	return fb_status_ok(fb_status);
 }
 
 /* Debug OFF */
-int fb_oem_cmd_debug_off(void* fb_magic_handler)
+int fb_oem_cmd_debug_off(void* fb_handle)
 {
 	int fb_status;
 	const char* info_reply = FASTBOOT_CMD_RESP_INFO "Debug set to OFF";
 
-	msc_cmd->debug_mode = 0;
+	msc_cmd.debug_mode = 0;
 	msc_cmd_write();
 	
-	fb_status = fastboot_send(fb_magic_handler, info_reply, strlen(info_reply));
+	fb_status = fastboot_send(fb_handle, info_reply, strlen(info_reply));
 	return fb_status_ok(fb_status);
 }
 
 /* Set primary boot partition */
-int fb_oem_cmd_setboot_primary(void* fb_magic_handler)
+int fb_oem_cmd_setboot_primary(void* fb_handle)
 {
 	int fb_status;
 	const char* info_reply = FASTBOOT_CMD_RESP_INFO "Set to boot primary kernel image.";
 	
-	msc_cmd->boot_partition = 0;
+	msc_cmd.boot_partition = 0;
 	msc_cmd_write();
 	
-	fb_status = fastboot_send(fb_magic_handler, info_reply, strlen(info_reply));
+	fb_status = fastboot_send(fb_handle, info_reply, strlen(info_reply));
 	return fb_status_ok(fb_status);
 }
 
 /* Set secondary boot partition */
-int fb_oem_cmd_setboot_secondary(void* fb_magic_handler)
+int fb_oem_cmd_setboot_secondary(void* fb_handle)
 {
 	int fb_status;
 	const char* info_reply = FASTBOOT_CMD_RESP_INFO "Set to boot secondary kernel image.";
 	
-	msc_cmd->boot_partition = 1;
+	msc_cmd.boot_partition = 1;
 	msc_cmd_write();
 	
-	fb_status = fastboot_send(fb_magic_handler, info_reply, strlen(info_reply));
+	fb_status = fastboot_send(fb_handle, info_reply, strlen(info_reply));
 	return fb_status_ok(fb_status);
 }
 
 /* Lock */
-int fb_oem_cmd_oem_lock(void* fb_magic_handler)
+int fb_oem_cmd_oem_lock(void* fb_handle)
 {
 	int fb_status;
 	const char* info_reply = FASTBOOT_CMD_RESP_INFO "Seriously, are you kidding me?"; /* Tsk :D */
 	
-	fb_status = fastboot_send(fb_magic_handler, info_reply, strlen(info_reply));
+	fb_status = fastboot_send(fb_handle, info_reply, strlen(info_reply));
 	return fb_status_ok(fb_status);
 }
 
 /* Unlock */
-int fb_oem_cmd_oem_unlock(void* fb_magic_handler)
+int fb_oem_cmd_oem_unlock(void* fb_handle)
 {
 	int fb_status;
 	const char* info_reply = FASTBOOT_CMD_RESP_INFO "Already unlocked.";
 	
-	fb_status = fastboot_send(fb_magic_handler, info_reply, strlen(info_reply));
+	fb_status = fastboot_send(fb_handle, info_reply, strlen(info_reply));
 	return fb_status_ok(fb_status);
 }
 
@@ -419,14 +419,14 @@ struct fb_oem_cmd_list_item fastboot_oem_command_table[] =
  * Fastboot oem command function.
  * Return 00 - OK, 01 - ERROR, don't pass OKAY to PC side
  */
-int fastboot_oem_command(const char* cmd, void* fb_magic_handler)
+int fastboot_oem_command(void* fb_handle, const char* cmd)
 {
 	int i;
 	
 	for (i = 0; i < ARRAY_SIZE(fastboot_oem_command_table); i++)
 	{
 		if (!strncmp(cmd, fastboot_oem_command_table[i].cmd_name, strlen(fastboot_oem_command_table[i].cmd_name)))
-			return fastboot_oem_command_table[i].cmd_handler(fb_magic_handler);
+			return fastboot_oem_command_table[i].cmd_handler(fb_handle);
 	}
 	
 	return 1;
@@ -446,7 +446,7 @@ void fastboot_continue(int boot_magic_value)
 	if (msc_boot_mode == BM_RECOVERY)
 		boot_recovery(boot_magic_value);
 	else
-		boot_normal(msc_cmd->boot_partition, boot_magic_value);
+		boot_normal(msc_cmd.boot_partition, boot_magic_value);
 	
 	/* Return -> fastboot error */
 }

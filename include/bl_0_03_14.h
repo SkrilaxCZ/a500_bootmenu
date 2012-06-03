@@ -38,18 +38,6 @@
  * ===========================================================================
  */
 
-/* 
- * Misc partition commands
- */
-
-/* Read MSC command */
-void msc_cmd_read();
-
-/* Write MSC command */
-void msc_cmd_write();
-
-/* Clear MSC command */
-void msc_cmd_clear();
 
 /* Update bootloader if we have the blob (partially related to msc) 
  * This function implements FOTA check, that's why recovery & bootloader update is merged.
@@ -80,11 +68,32 @@ void print_bootlogo();
 void clear_screen();
 
 /*
- * Miscellaneuos
+ * Partitions
  */
 
-/* Format partition - use LNX, SOS, CAC as partition ID */
-void format_partition(const char* partition);
+#define PARTITION_OPEN_READ     1
+#define PARTITION_OPEN_WRITE    2
+
+/* use LNX, SOS, CAC as partition ID */
+
+/* Open partition */
+int open_partition(const char* partition, int open_type, int* partition_handle);
+
+/* Read partition */
+int read_partition(int partition_handle, void* buffer, int buffer_length, int* processed_bytes);
+
+/* Write partiiton */
+int write_partition(int partition_handle, void* buffer, int data_size, int* processed_bytes);
+
+/* Close partiiton */
+int close_partition(int partition_handle);
+
+/* Format partition */
+int format_partition(const char* partition);
+
+/*
+ * Miscellaneuos
+ */
 
 /* Check for wifi only tablet (00 - wifi only, 01 - 3G modem */
 int is_wifi_only();
@@ -92,7 +101,7 @@ int is_wifi_only();
 /* Get serial info */
 void get_serial_no(unsigned int* serial_no);
 
-/* Reboot (uses magic argument )*/
+/* Reboot (uses magic argument) */
 void reboot(void* magic);
 
 /*
@@ -296,13 +305,14 @@ void android_boot_image(char* image_bytes, int image_ep, int magic_boot_argument
 /*
  * Send to host
  */
-//int fastboot_send(void* fb_magic_handler, const char *command, int command_length, int unk3/* oftenly 0*/, int unk4/* oftenly 1000 */);
-int fastboot_send(void* fb_magic_handler, const char *command, int command_length);
+//int fastboot_send(void* fb_handle, const char *command, int command_length, int unk4/* oftenly 0*/, int unk5/* oftenly 1000 */);
+int fastboot_send(void* fb_handle, const char *command, int command_length);
 
 /*
  * Receive from host
  */
-//int fastboot_receive(void* fb_magic_handler, char *received_cmd, int, int, int, int);
+//int fastboot_recv(void* fb_handle, char *cmd_buffer, int buffer_length, int* cmd_length, int unk5/* oftenly 0*/, int unk6/* oftenly 1000 */);
+int fastboot_recv(void* fb_handle, char* cmd_buffer, int buffer_length, int* cmd_length);
 
 /* ===========================================================================
  * ARM Mode functions
@@ -340,6 +350,3 @@ extern const char* bootloader_id;
 
 /* Bootloader version */
 extern const char* bootloader_version;
-
-/* MSC command */
-extern struct msc_command* msc_cmd;

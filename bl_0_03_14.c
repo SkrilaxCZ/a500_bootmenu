@@ -43,14 +43,6 @@
 #define ASM_THUMB_B(address) __asm__("B  " #address "\n")
 #define ASM_ARM_B(address)   __asm__("LDR R12, =" #address "\n BX R12")
 
-/* 
- * Misc partition commands
- */
-
-void NAKED msc_cmd_read()                                { ASM_THUMB_B(0x10BF2C); }
-void NAKED msc_cmd_write()                               { ASM_THUMB_B(0x10C088); }
-void NAKED msc_cmd_clear()                               { ASM_THUMB_B(0x10C138); }
-
 /*
  * GPIO
  */
@@ -67,18 +59,27 @@ void NAKED print_bootlogo()                              { ASM_THUMB_B(0x10CEDC)
 void NAKED clear_screen()                                { ASM_THUMB_B(0x10EDE0); }
 
 /*
+ * Partitions
+ */
+
+int  NAKED open_partition(const char* partition, int open_type, int* partition_handle)                     { ASM_THUMB_B(0x11E648); }
+int  NAKED read_partition(int partition_handle, void* buffer, int buffer_length, int* processed_bytes)     { ASM_THUMB_B(0x11E1A4); }
+int  NAKED write_partition(int partition_handle, void* buffer, int data_size, int* processed_bytes)        { ASM_THUMB_B(0x11E1E0); }
+int  NAKED close_partition(int partition_handle)                                                           { ASM_THUMB_B(0x11E28C); }
+int  NAKED format_partition(const char* partition)                                                         { ASM_THUMB_B(0x11E534); }
+
+/*
  * Miscellaneuos
  */
 
-void NAKED format_partition(const char* partition)       { ASM_THUMB_B(0x11E534); }
-int  NAKED is_wifi_only()                                { ASM_THUMB_B(0x10C5C0); }
+int  NAKED is_wifi_only()                                                                                  { ASM_THUMB_B(0x10C5C0); }
 
 /*
  * Booting
  */
 
-const char* NAKED android_load_image(char** image_bytes, int* image_ep, const char* partition)          { ASM_THUMB_B(0x10C898); }
-void        NAKED android_boot_image(char* image_bytes, int image_ep, int magic_boot_argument)          { ASM_THUMB_B(0x10CB40); }
+const char* NAKED android_load_image(char** image_bytes, int* image_ep, const char* partition)             { ASM_THUMB_B(0x10C898); }
+void        NAKED android_boot_image(char* image_bytes, int image_ep, int magic_boot_argument)             { ASM_THUMB_B(0x10CB40); }
 
 /* ===========================================================================
  * ARM Mode functions
@@ -107,7 +108,7 @@ void  NAKED printf(const char *format, ...)                                     
 void  NAKED sleep(int ms)                                                              { ASM_ARM_B(0x179F44); }
 
 /* ===========================================================================
- * Functions using magic argument (need to be reverse engineered properly)
+ * Functions using magic argument (need to be reverse engineered more)
  * ===========================================================================
  */
 void NAKED reboot(void* magic)
@@ -155,7 +156,7 @@ void NAKED get_serial_no(unsigned int* serial_no)
 	);
 }
 
-int  NAKED fastboot_send(void* fb_magic_handler, const char *command, int command_length)    
+int  NAKED fastboot_send(void* fb_handle, const char *command, int command_length)    
 { 
 	__asm__
 	(
@@ -171,6 +172,23 @@ int  NAKED fastboot_send(void* fb_magic_handler, const char *command, int comman
 	);
 }
 
+int  NAKED fastboot_recv(void* fb_handle, char* cmd_buffer, int buffer_length, int* cmd_length)    
+{ 
+	__asm__
+	(
+		"PUSH    {R4,LR}\n"
+		"SUB     SP, SP, #8\n"
+		"MOV.W   R4, #0x3E8\n"
+		"STR     R4, [SP]\n"
+		"MOV     R4, #0\n"
+		"STR     R4, [SP, #4]\n"
+		"LDR     R0, [R0]\n"
+		"BL      0x11A6DC\n"
+		"ADD     SP, SP, #8\n"
+		"POP     {R4,PC}\n"
+	);
+}
+
 
 /* ===========================================================================
  * Variables
@@ -182,6 +200,3 @@ const char* bootloader_id = (void*)0x18EBD4;
 
 /* Bootloader version */
 const char* bootloader_version = (void*)0x18EBF8;
-
-/* Loaded command from MSC partition */
-struct msc_command* msc_cmd = (void*)0x23ECD8;

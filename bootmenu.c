@@ -65,6 +65,9 @@ struct gpio_key device_keys[] =
 	},
 };
 
+/* MSC partition command */
+struct msc_command msc_cmd;
+
 /* How to boot */
 enum boot_mode this_boot_mode = BM_NORMAL;
 
@@ -123,12 +126,51 @@ enum key_type wait_for_key_event()
 	}
 }
 
-/* 
- * Get debug mode
+/*
+ * Read MSC command
  */
-int get_debug_mode(void)
+void msc_cmd_read()
 {
-	return msc_cmd->debug_mode;
+	struct msc_command my_cmd;
+	int msc_pt_handle;
+	int processed_bytes;
+	
+	msc_pt_handle = 0;
+	
+	if (open_partition("MSC", PARTITION_OPEN_READ, &msc_pt_handle))
+		goto finish;
+	
+	if (read_partition(msc_pt_handle, &my_cmd, sizeof(my_cmd), &processed_bytes))
+		goto finish;
+	
+	if (processed_bytes != sizeof(my_cmd))
+		goto finish;
+	
+	memcpy(&msc_cmd, &my_cmd, sizeof(my_cmd));
+		
+finish:
+	close_partition(msc_pt_handle);
+	return;	
+}
+
+/*
+ * Write MSC Command
+ */
+void msc_cmd_write()
+{
+	int msc_pt_handle;
+	int processed_bytes;
+	
+	msc_pt_handle = 0;
+	
+	if (open_partition("MSC", PARTITION_OPEN_WRITE, &msc_pt_handle))
+		goto finish;
+	
+	write_partition(msc_pt_handle, &msc_cmd, sizeof(msc_cmd), &processed_bytes);
+	
+finish:
+	close_partition(msc_pt_handle);
+	return;	
 }
 
 /*
@@ -153,6 +195,9 @@ void boot_android_image(const char* partition, int boot_magic_value)
  */
 void boot_normal(int boot_partition, int boot_magic_value)
 {
+	/* Normal mode frame */
+	bootmenu_basic_frame();
+	
 	if (boot_partition == 0)
 	{
 		println_display("Booting primary kernel image");
@@ -170,6 +215,9 @@ void boot_normal(int boot_partition, int boot_magic_value)
  */
 void boot_recovery(int boot_magic_value)
 {
+	/* Normal mode frame */
+	bootmenu_basic_frame();
+	
 	println_display("Booting recovery kernel image");
 	boot_android_image("SOS", boot_magic_value);
 }
@@ -177,7 +225,7 @@ void boot_recovery(int boot_magic_value)
 /*
  * Clear screen & Print ID
  */
-void bootmenu_new_frame(void)
+void bootmenu_frame(void)
 {
 	char buffer[0x80];
 	
@@ -195,7 +243,7 @@ void bootmenu_new_frame(void)
 }
 
 /*
- * Restore frame for stock BL
+ * Basic frame (normal mode)
  */
 void bootmenu_basic_frame(void)
 {
@@ -259,14 +307,17 @@ void main(void* magic, int magic_boot_argument)
 	/* Ensure we have bootloader update */
 	check_bootloader_update(magic);
 	
+	/* Read msc command */
+	msc_cmd_read();
+	
 	/* First, check MSC command */
-	if (!strncmp((const char*)msc_cmd->boot_command, MSC_CMD_RECOVERY, strlen(MSC_CMD_RECOVERY)))
+	if (!strncmp((const char*)msc_cmd.boot_command, MSC_CMD_RECOVERY, strlen(MSC_CMD_RECOVERY)))
 		this_boot_mode = BM_RECOVERY;
-	else if (!strncmp((const char*)msc_cmd->boot_command, MSC_CMD_FCTRY_RESET, strlen(MSC_CMD_FCTRY_RESET)))
+	else if (!strncmp((const char*)msc_cmd.boot_command, MSC_CMD_FCTRY_RESET, strlen(MSC_CMD_FCTRY_RESET)))
 		this_boot_mode = BM_FCTRY_RESET;
-	else if (!strncmp((const char*)msc_cmd->boot_command, MSC_CMD_FASTBOOT, strlen(MSC_CMD_FASTBOOT)))
+	else if (!strncmp((const char*)msc_cmd.boot_command, MSC_CMD_FASTBOOT, strlen(MSC_CMD_FASTBOOT)))
 		this_boot_mode = BM_FASTBOOT;
-	else if (!strncmp((const char*)msc_cmd->boot_command, MSC_CMD_BOOTMENU, strlen(MSC_CMD_BOOTMENU)))
+	else if (!strncmp((const char*)msc_cmd.boot_command, MSC_CMD_BOOTMENU, strlen(MSC_CMD_BOOTMENU)))
 		this_boot_mode = BM_BOOTMENU;
 	else
 		this_boot_mode = BM_NORMAL;
@@ -279,18 +330,19 @@ void main(void* magic, int magic_boot_argument)
 	else if (get_key_active(KEY_VOLUME_DOWN))
 		this_boot_mode = BM_RECOVERY;
 		
-	/* Clear msc command */
-	msc_cmd_clear();
+	/* Clear boot command from msc */
+	memset(msc_cmd.boot_command, 0, ARRAY_SIZE(msc_cmd.boot_command));
+	msc_cmd_write();
 	
 	/* Evaluate boot mode */
 	if (this_boot_mode == BM_NORMAL)
 	{
-		if (msc_cmd->boot_partition == 0)
+		if (msc_cmd.boot_partition == 0)
 			boot_partition_attempt = "primary (LNX)";
 		else
 			boot_partition_attempt = "secondary (AKB)";
 		
-		boot_normal(msc_cmd->boot_partition, magic_boot_argument);
+		boot_normal(msc_cmd.boot_partition, magic_boot_argument);
 	}
 	else if (this_boot_mode == BM_RECOVERY)
 	{
@@ -333,10 +385,10 @@ void main(void* magic, int magic_boot_argument)
 	while (1)
 	{ 
 		/* New frame */
-		bootmenu_new_frame();
+		bootmenu_frame();
 		
 		/* Print current boot mode */
-		if (msc_cmd->boot_partition == 0)
+		if (msc_cmd.boot_partition == 0)
 		{
 			boot_partition_str = "Primary";
 			other_boot_partition_str = "Secondary";
@@ -349,7 +401,7 @@ void main(void* magic, int magic_boot_argument)
 		
 		println_display("Current boot mode: %s kernel image", boot_partition_str);
 		
-		if (msc_cmd->debug_mode == 0)
+		if (msc_cmd.debug_mode == 0)
 		{
 			debug_mode_str = "OFF";
 			other_debug_mode_str = "ON";
@@ -427,40 +479,38 @@ void main(void* magic, int magic_boot_argument)
 				
 				case 2: /* Primary kernel image */
 					boot_partition_attempt = "primary (LNX)";
-					bootmenu_basic_frame();
 					boot_normal(0, magic_boot_argument);
 					break;
 					
 				case 3: /* Secondary kernel image */
 					boot_partition_attempt = "secondary (AKB)";
-					bootmenu_basic_frame();
 					boot_normal(1, magic_boot_argument);
 					break;
 					
 				case 4: /* Recovery kernel image */
 					boot_partition_attempt = "recovery (SOS)";
-					bootmenu_basic_frame();
 					boot_recovery(magic_boot_argument);
 					break;
 					
 				case 5: /* Toggle boot kernel image */
 					
-					msc_cmd->boot_partition = !msc_cmd->boot_partition;
+					msc_cmd.boot_partition = !msc_cmd.boot_partition;
 					msc_cmd_write();
 					selected_option = 0;
 					break;
 					
 				case 6: /* Toggle debug mode */
 					
-					msc_cmd->debug_mode = !msc_cmd->debug_mode;
+					msc_cmd.debug_mode = !msc_cmd.debug_mode;
 					msc_cmd_write();
 					selected_option = 0;
 					break;
 					
 				case 7: /* Wipe cache */
-					bootmenu_new_frame();
+					bootmenu_basic_frame();
 					println_display("Erasing CAC partition...");
 					format_partition("CAC");
+					sleep(2000);
 					selected_option = 0;
 					break;
 			}
