@@ -27,14 +27,14 @@
 /* Boot menu items */
 const char* boot_menu_items[] =
 {
-	"%c Reboot\n",
-	"%c Fastboot Mode\n",
-	"%c Boot Primary Kernel Image\n",
-	"%c Boot Secondary Kernel Image\n",
-	"%c Boot Recovery\n",
-	"%c Set Boot %s Kernel Image\n",
-	"%c Set Debug Mode %s\n",
-	"%c Wipe Cache\n",
+	"%s%sReboot",
+	"%s%sFastboot Mode",
+	"%s%sBoot Primary Kernel Image",
+	"%s%sBoot Secondary Kernel Image",
+	"%s%sBoot Recovery",
+	"%s%sSet Boot %s Kernel Image",
+	"%s%sSet Debug Mode %s",
+	"%s%sWipe Cache",
 };
 
 /* Device keys */
@@ -272,7 +272,7 @@ void bootmenu_basic_frame(void)
 void error(void)
 {
 	bootmenu_basic_frame();
-	println_display_error("\nUnrecoverable bootloader error, please reboot the device manually.");
+	fb_printf("%sUnrecoverable bootloader error, please reboot the device manually.", fb_text_color_code(0xFF, 0xFF, 0x01));
 	
 	while (1)
 		sleep(1000);
@@ -306,9 +306,13 @@ void main(void* magic, int magic_boot_argument)
 	
 	/* Print error, from which partition booting failed */
 	const char* boot_partition_attempt = NULL;
-		
-	int i;
-	char c;	
+	
+	/* Line builder - two color codes used */
+	char line_builder[TEXT_LINE_CHARS + 8 + 1];
+	
+	int i, l;
+	const char* b;
+	const char* c;
 	
 	/* Fill full bootloader version */
 	snprintf(full_bootloader_version, 0x80, bootloader_id, bootloader_version);
@@ -434,24 +438,42 @@ void main(void* magic, int magic_boot_argument)
 		
 		/* Print error if we're stuck in bootmenu */
 		if (boot_partition_attempt)
-			fb_printf("ERROR: Invalid %s kernel image.\n\n", boot_partition_attempt);
+			fb_printf("%sERROR: Invalid %s kernel image.\n\n", fb_text_color_code(0xFF, 0xFF, 0x01), boot_partition_attempt);
 		
 		fb_printf("\n");
 		
 		/* Print options */
 		for (i = 0; i < ARRAY_SIZE(boot_menu_items); i++)
 		{
+			memset(line_builder, 0x20, ARRAY_SIZE(line_builder));
+			line_builder[ARRAY_SIZE(line_builder) - 1] = '\0';
+			line_builder[ARRAY_SIZE(line_builder) - 2] = '\n';
+			
 			if (i == selected_option)
-				c = '>';
+			{
+				b = fb_background_color_code(text_color.R, text_color.G, text_color.B);
+				c = fb_text_color_code(highlight_color.R, highlight_color.G, highlight_color.B);
+			}
 			else
-				c = ' ';
+			{
+				b = fb_background_color_code(0, 0, 0);
+				c = fb_text_color_code(text_color.R, text_color.G, text_color.B);
+			}
 			
 			if (i == 5)
-				fb_printf(boot_menu_items[i], c, other_boot_partition_str);
+				snprintf(line_builder, ARRAY_SIZE(line_builder), boot_menu_items[i], b, c, other_boot_partition_str);
 			else if (i == 6)
-				fb_printf(boot_menu_items[i], c, other_debug_mode_str);
+				snprintf(line_builder, ARRAY_SIZE(line_builder), boot_menu_items[i], b, c, other_debug_mode_str);
 			else
-				fb_printf(boot_menu_items[i], c);
+				snprintf(line_builder, ARRAY_SIZE(line_builder), boot_menu_items[i], b, c);
+			
+			l = strlen(line_builder);
+			if (l == ARRAY_SIZE(line_builder) - 1)
+				line_builder[ARRAY_SIZE(line_builder) - 2] = '\n';
+			else if (l < ARRAY_SIZE(line_builder) - 1)
+				line_builder[l] = ' ';
+			
+			fb_printf(line_builder);
 		}
 		
 		/* Draw framebuffer */
@@ -514,14 +536,12 @@ void main(void* magic, int magic_boot_argument)
 					break;
 					
 				case 5: /* Toggle boot kernel image */
-					
 					msc_cmd.boot_partition = !msc_cmd.boot_partition;
 					msc_cmd_write();
 					selected_option = 0;
 					break;
 					
 				case 6: /* Toggle debug mode */
-					
 					msc_cmd.debug_mode = !msc_cmd.debug_mode;
 					msc_cmd_write();
 					selected_option = 0;
@@ -530,11 +550,15 @@ void main(void* magic, int magic_boot_argument)
 				case 7: /* Wipe cache */
 					bootmenu_basic_frame();
 					fb_set_status("Bootmenu Mode");
-					fb_printf("Erasing CAC partition...\n");
+					fb_printf("Erasing CAC partition...\n\n");
 					fb_refresh();
 					
 					format_partition("CAC");
+					
+					fb_printf("Done.\n");
+					fb_refresh();
 					sleep(2000);
+					
 					selected_option = 0;
 					break;
 			}

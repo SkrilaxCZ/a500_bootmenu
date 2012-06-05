@@ -57,6 +57,15 @@ struct color text_color =
 	.X = 0x00,
 };
 
+/* Highlight color */
+struct color highlight_color =
+{
+	.R = 0x3F,
+	.G = 0x3F,
+	.B = 0x3F,
+	.X = 0x00,
+};
+
 /* Framebuffer data */
 uint8_t* framebuffer;
 uint32_t framebuffer_size;
@@ -115,11 +124,13 @@ static void fb_error(const char* msg)
 /* 
  * Draw text on location
  */
-static void fb_draw_string(uint32_t x, uint32_t y, const char* s, struct color* c)
+static void fb_draw_string(uint32_t x, uint32_t y, const char* s, struct color* b, struct color* c)
 {
 	char off;
+	int cc, bkg;
 	uint32_t i, j, pixel;
 	uint16_t p;
+	struct color* changing;
 	
 	if (font_data == NULL)
 		return;
@@ -128,6 +139,8 @@ static void fb_draw_string(uint32_t x, uint32_t y, const char* s, struct color* 
 	if (y + FONT_HEIGHT >= SCREEN_HEIGHT)
 		return;
 	
+	bkg = ((b->R) || (b->G) || (b->B));
+	
 	while ((off = *s++))
 	{
 		/* Out of bounds */
@@ -135,33 +148,53 @@ static void fb_draw_string(uint32_t x, uint32_t y, const char* s, struct color* 
 			return;
 		
 		/* Check color code */
+		cc = 0;
+		
 		if (off == 0x1B)
+		{
+			changing = c;
+			cc = 1;
+		}
+		else if (off == 0x1C)
+		{
+			changing = b;
+			bkg = 1;
+			cc = 1;
+		}
+		else if (off == 0x1D)
+		{
+			b->R = 0;
+			b->G = 0;
+			b->B = 0;
+			bkg = 0;
+			
+			continue;
+		}
+		
+		if (cc)
 		{
 			/* R */
 			off = *s++;
 			if (!off)
 				break;
 			
-			c->R = off;
+			changing->R = off;
 			
 			/* G */
 			off = *s++;
 			if (!off)
 				break;
 			
-			c->G = off;
+			changing->G = off;
 			
 			/* B */
 			off = *s++;
 			if (!off)
 				break;
 			
-			c->B = off;
+			changing->B = off;
 			
-			/* Next char */
-			off = *s++;
-			if (!off)
-				break;
+			continue;
 		}
 		
 		/* Allright - check if we can render it */ 
@@ -180,9 +213,18 @@ static void fb_draw_string(uint32_t x, uint32_t y, const char* s, struct color* 
 				/* Get the pixel in the frame */
 				pixel = sizeof(struct color) * ((y + i) * SCREEN_WIDTH + (x + j));
 				
-				builder[pixel  ] = (uint8_t)(((builder[pixel  ] * (255 - p)) + (c->R * p)) / 255);
-				builder[pixel+1] = (uint8_t)(((builder[pixel+1] * (255 - p)) + (c->G * p)) / 255);
-				builder[pixel+2] = (uint8_t)(((builder[pixel+2] * (255 - p)) + (c->B * p)) / 255);
+				if (bkg)
+				{
+					builder[pixel  ] = (uint8_t)(((b->R * (255 - p)) + (c->R * p)) / 255);
+					builder[pixel+1] = (uint8_t)(((b->G * (255 - p)) + (c->G * p)) / 255);
+					builder[pixel+2] = (uint8_t)(((b->B * (255 - p)) + (c->B * p)) / 255);
+				}
+				else
+				{
+					builder[pixel  ] = (uint8_t)(((builder[pixel  ] * (255 - p)) + (c->R * p)) / 255);
+					builder[pixel+1] = (uint8_t)(((builder[pixel+1] * (255 - p)) + (c->G * p)) / 255);
+					builder[pixel+2] = (uint8_t)(((builder[pixel+2] * (255 - p)) + (c->B * p)) / 255);
+				}
 				
 			}
 		}
@@ -363,6 +405,46 @@ void fb_printf(const char* fmt, ...)
 }
 
 /*
+ * Text color code
+ */
+static char text_color_buf[5];
+
+const char* fb_text_color_code(uint8_t r, uint8_t g, uint8_t b)
+{
+	text_color_buf[0] = (char)0x1B;
+	text_color_buf[1] = (char)r;
+	text_color_buf[2] = (char)g;
+	text_color_buf[3] = (char)b;
+	text_color_buf[4] = '\0';
+	
+	return text_color_buf;
+}
+
+/*
+ * Text color code
+ */
+static char background_color_buf[5];
+
+const char* fb_background_color_code(uint8_t r, uint8_t g, uint8_t b)
+{
+	if (r || b || g)
+	{
+		background_color_buf[0] = (char)0x1C;
+		background_color_buf[1] = (char)r;
+		background_color_buf[2] = (char)g;
+		background_color_buf[3] = (char)b;
+		background_color_buf[4] = '\0';
+	}
+	else
+	{
+		background_color_buf[0] = (char)0x1D;
+		background_color_buf[1] = '\0';
+	}
+	
+	return background_color_buf;
+}
+
+/*
  * Clear framebuffer
  */
 void fb_clear()
@@ -380,8 +462,9 @@ void fb_clear()
 void fb_refresh()
 {
 	int i, l;
+	struct color b;
 	struct color c;
-	
+		
 	/* Clear framebuffer */
 	if (background != NULL)
 		memcpy(builder, background, SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(struct color));
@@ -390,18 +473,29 @@ void fb_refresh()
 		
 	/* Draw title */
 	c = title_color;
+	b.R = 0;
+	b.G = 0;
+	b.B = 0;
+	
 	l = strlen(title);
-	fb_draw_string((SCREEN_WIDTH/2) - (l*FONT_WIDTH/2), TITLE_Y_OFFSET, title, &c);
+	fb_draw_string((SCREEN_WIDTH/2) - (l*FONT_WIDTH/2), TITLE_Y_OFFSET, title, &b, &c);
 	
 	c = title_color;
+	b.R = 0;
+	b.G = 0;
+	b.B = 0;
+	
 	l = strlen(status);
-	fb_draw_string((SCREEN_WIDTH/2) - (l*FONT_WIDTH/2), TITLE_Y_OFFSET + FONT_HEIGHT, status, &c);
+	fb_draw_string((SCREEN_WIDTH/2) - (l*FONT_WIDTH/2), TITLE_Y_OFFSET + FONT_HEIGHT, status, &b, &c);
 	
 	/* Draw text */
 	c = text_color;
+	b.R = 0;
+	b.G = 0;
+	b.B = 0;
 	
 	for (i = 0; i <= text_cur_y; i++)
-		fb_draw_string(TEXT_X_OFFSET, TEXT_Y_OFFSET + i * FONT_HEIGHT, text[i], &c);
+		fb_draw_string(TEXT_X_OFFSET, TEXT_Y_OFFSET + i * FONT_HEIGHT, text[i], &b, &c);
 		
 	/* Push and refresh framebuffer */
 	memcpy(framebuffer, builder, SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(struct color));

@@ -37,13 +37,21 @@ uint32_t clr2int(struct color clr);
 /* int to color */
 struct color int2clr (uint32_t u);
 
-/* Initial text colors: use colorcode 0x1B + R + G + B (range 01 - FF) to change color code from text */
+/* Initial text colors: 
+ * Use colorcodes:
+ * - 0x1B + R + G + B (range 01 - FF) to change color code of the text 
+ * - 0x1C + R + G + B (range 01 - FF) to change color code of the background
+ * - 0x1D transparent background
+ */
 
 /* Title color */
 extern struct color title_color;
 
 /* Text color */
 extern struct color text_color;
+
+/* Highlight color */
+extern struct color highlight_color;
 
 /*
  * Init framebuffer
@@ -64,6 +72,17 @@ void fb_set_status(const char* status_msg);
  * Draw text
  */
 void fb_printf(const char* fmt, ...);
+
+/*
+ * Text color code
+ */
+const char* fb_text_color_code(uint8_t r, uint8_t g, uint8_t b);
+
+/*
+ * Background color code
+ * Specify 00, 00, 00 for transparent background
+ */
+const char* fb_background_color_code(uint8_t r, uint8_t g, uint8_t b);
 
 /*
  * Clear framebuffer
