@@ -1,11 +1,11 @@
 /* 
  * Acer bootloader boot menu application main file.
  * 
- * Copyright 2012 Skrilax_CZ
+ * Copyright (C) 2012 Skrilax_CZ
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -22,8 +22,9 @@
 #include <stddef.h>
 #include <bl_0_03_14.h>
 #include <bootmenu.h>
+#include <framebuffer.h>
 
-/* Boot menu items - '%c' is either ">" when selected or " " when not selected */
+/* Boot menu items */
 const char* boot_menu_items[] =
 {
 	"%c Reboot\n",
@@ -97,13 +98,13 @@ enum key_type wait_for_key_event()
 {
 	/* Wait for key event, debounce them first */
 	while (get_key_active(KEY_VOLUME_UP))
-		sleep(100);
+		sleep(30);
 	
 	while (get_key_active(KEY_VOLUME_DOWN))
-		sleep(100);
+		sleep(30);
 	
 	while (get_key_active(KEY_POWER))
-		sleep(100);
+		sleep(30);
 		
 	while (1)
 	{
@@ -117,12 +118,12 @@ enum key_type wait_for_key_event()
 		{
 			/* Power key - act on releasing it */
 			while (get_key_active(KEY_POWER))
-				sleep(100);
+				sleep(30);
 			
 			return KEY_POWER;
 		}
 		
-		sleep(100);
+		sleep(30);
 	}
 }
 
@@ -200,12 +201,16 @@ void boot_normal(int boot_partition, int boot_magic_value)
 	
 	if (boot_partition == 0)
 	{
-		println_display("Booting primary kernel image");
+		fb_set_status("Booting primary kernel image");
+		fb_refresh();
+		
 		boot_android_image("LNX", boot_magic_value);
 	}
 	else
 	{
-		println_display("Booting secondary kernel image");
+		fb_set_status("Booting secondary kernel image");
+		fb_refresh();
+		
 		boot_android_image("AKB", boot_magic_value);
 	}
 }
@@ -218,28 +223,35 @@ void boot_recovery(int boot_magic_value)
 	/* Normal mode frame */
 	bootmenu_basic_frame();
 	
-	println_display("Booting recovery kernel image");
+	fb_set_status("Booting recovery kernel image");
+	fb_refresh();
 	boot_android_image("SOS", boot_magic_value);
 }
 
 /*
- * Clear screen & Print ID
+ * Bootmenu frame
  */
 void bootmenu_frame(void)
 {
-	char buffer[0x80];
+	/* Centered */
+	char buffer[TEXT_LINE_CHARS+1];
+	const char* hint = "Use volume keys to highlight, power to select.";
+	int i;
+	int l = strlen(hint);
 	
 	/* clear screen */
-	clear_screen();
+	fb_clear();
 	
-	/* print bootlogo */
-	print_bootlogo();
+	/* set status */
+	fb_set_status("Bootmenu Mode");
 	
-	/* print id */
-	snprintf(buffer, 0x80, "%s: %s", full_bootloader_version, "Bootmenu Mode"); 
-	
-	println_display(buffer);
-	println_display("Use volume keys to highlight, power to select.\n\n");
+	/* Draw hint */
+	for (i = 0; i < (TEXT_LINE_CHARS - l) / 2; i++)
+		buffer[i] = ' ';
+
+	strncpy(&(buffer[(TEXT_LINE_CHARS - l) / 2]), hint, l);
+	fb_printf(buffer);
+	fb_printf("\n\n\n");
 }
 
 /*
@@ -248,13 +260,10 @@ void bootmenu_frame(void)
 void bootmenu_basic_frame(void)
 {
 	/* clear screen */
-	clear_screen();
+	fb_clear();
 	
-	/* print bootlogo */
-	print_bootlogo();
-	
-	/* Print booloader ID */
-	println_display(full_bootloader_version);
+	/* clear status */
+	fb_set_status("");
 }
 
 /*
@@ -297,12 +306,18 @@ void main(void* magic, int magic_boot_argument)
 	
 	/* Print error, from which partition booting failed */
 	const char* boot_partition_attempt = NULL;
-	
+		
 	int i;
-	char c;
+	char c;	
 	
 	/* Fill full bootloader version */
 	snprintf(full_bootloader_version, 0x80, bootloader_id, bootloader_version);
+	
+	/* Initialize framebuffer */
+	fb_init();
+	
+	/* Set title */
+	fb_set_title(full_bootloader_version);
 	
 	/* Ensure we have bootloader update */
 	check_bootloader_update(magic);
@@ -351,18 +366,21 @@ void main(void* magic, int magic_boot_argument)
 	}
 	else if (this_boot_mode == BM_FCTRY_RESET)
 	{
-		println_display("Factory reset\n");
+		fb_set_status("Factory reset\n");
 		
 		/* Erase userdata */
-		println_display("Erasing UDA partition...\n");
+		fb_printf("Erasing UDA partition...\n\n");
+		fb_refresh();
 		format_partition("UDA");
 		 
 		/* Erase cache */
-		println_display("Erasing CAC partition...\n");
+		fb_printf("Erasing CAC partition...\n\n");
+		fb_refresh();
 		format_partition("CAC");
 		
 		/* Finished */
-		println_display("Done.");
+		fb_printf("Done.\n");
+		fb_refresh();
 		
 		/* Sleep */
 		sleep(5000);
@@ -399,7 +417,7 @@ void main(void* magic, int magic_boot_argument)
 			other_boot_partition_str = "Primary";
 		}
 		
-		println_display("Current boot mode: %s kernel image", boot_partition_str);
+		fb_printf("Current boot mode: %s kernel image\n", boot_partition_str);
 		
 		if (msc_cmd.debug_mode == 0)
 		{
@@ -412,13 +430,13 @@ void main(void* magic, int magic_boot_argument)
 			other_debug_mode_str = "OFF";
 		}
 		
-		println_display("Debug mode: %s\n\n", debug_mode_str);
+		fb_printf("Debug mode: %s\n\n", debug_mode_str);
 		
 		/* Print error if we're stuck in bootmenu */
 		if (boot_partition_attempt)
-			println_display_error("ERROR: Invalid %s kernel image.\n\n", boot_partition_attempt);
+			fb_printf("ERROR: Invalid %s kernel image.\n\n", boot_partition_attempt);
 		
-		println_display("");
+		fb_printf("\n");
 		
 		/* Print options */
 		for (i = 0; i < ARRAY_SIZE(boot_menu_items); i++)
@@ -429,12 +447,15 @@ void main(void* magic, int magic_boot_argument)
 				c = ' ';
 			
 			if (i == 5)
-				println_display(boot_menu_items[i], c, other_boot_partition_str);
+				fb_printf(boot_menu_items[i], c, other_boot_partition_str);
 			else if (i == 6)
-				println_display(boot_menu_items[i], c, other_debug_mode_str);
+				fb_printf(boot_menu_items[i], c, other_debug_mode_str);
 			else
-				println_display(boot_menu_items[i], c);
+				fb_printf(boot_menu_items[i], c);
 		}
+		
+		/* Draw framebuffer */
+		fb_refresh();
 		
 		key_press = wait_for_key_event();
 		
@@ -508,7 +529,10 @@ void main(void* magic, int magic_boot_argument)
 					
 				case 7: /* Wipe cache */
 					bootmenu_basic_frame();
-					println_display("Erasing CAC partition...");
+					fb_set_status("Bootmenu Mode");
+					fb_printf("Erasing CAC partition...\n");
+					fb_refresh();
+					
 					format_partition("CAC");
 					sleep(2000);
 					selected_option = 0;

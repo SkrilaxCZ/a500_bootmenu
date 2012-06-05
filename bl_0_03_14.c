@@ -2,11 +2,11 @@
  * This file maps functions and variables that can be found in Acer 0.03.14-ICS bootloader,
  * and the patched version.
  *
- * Copyright 2012 Skrilax_CZ
+ * Copyright (C) 2012 Skrilax_CZ
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -57,6 +57,7 @@ void NAKED println_display(const char* fmt, ...)         { ASM_THUMB_B(0x10ECB0)
 void NAKED println_display_error(const char* fmt, ...)   { ASM_THUMB_B(0x10ED1C); }
 void NAKED print_bootlogo()                              { ASM_THUMB_B(0x10CEDC); }
 void NAKED clear_screen()                                { ASM_THUMB_B(0x10EDE0); }
+void NAKED framebuffer_unknown_call()                    { ASM_THUMB_B(0x10ED84); }
 
 /*
  * Partitions
@@ -96,6 +97,7 @@ int   NAKED strncmp(const char *str1, const char *str2, int n)                  
 char* NAKED strncpy(char *destination, const char *source, int num)                    { ASM_ARM_B(0x17B0C8); }
 int   NAKED strlen(const char *str)                                                    { ASM_ARM_B(0x17B0F8); }
 int   NAKED snprintf(char *str, int size, const char *format, ...)                     { ASM_ARM_B(0x17C1DC); }
+int   NAKED vsnprintf(char *str, int size, const char *format, va_list ap)             { ASM_ARM_B(0x17C230); }
 
 void* NAKED malloc(int size)                                                           { ASM_ARM_B(0x179998); }
 int   NAKED memcmp(const void *ptr1, const void *ptr2, int num)                        { ASM_ARM_B(0x17B150); }
@@ -196,7 +198,11 @@ int  NAKED fastboot_recv(void* fb_handle, char* cmd_buffer, int buffer_length, i
  */
 
 /* Bootloader ID */
-const char* bootloader_id = (void*)0x18EBD4;
+const char* bootloader_id = (const char*)0x18EBD4;
 
 /* Bootloader version */
-const char* bootloader_version = (void*)0x18EBF8;
+const char* bootloader_version = (const char*)0x18EBF8;
+
+/* Framebuffer */
+uint8_t** framebuffer_ptr = (uint8_t**)0x23EDA8;
+uint32_t* framebuffer_size_ptr = (uint32_t*)0x23EDA4;

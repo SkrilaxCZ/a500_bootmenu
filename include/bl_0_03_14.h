@@ -2,11 +2,11 @@
  * This file maps functions and variables that can be found in Acer 0.03.14-ICS bootloader,
  * and the patched version.
  *
- * Copyright 2012 Skrilax_CZ
+ * Copyright (C) 2012 Skrilax_CZ
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -32,6 +32,9 @@
 #ifndef __thumb__
 #error Thumb mode must be used.
 #endif
+
+#include <stddef.h>
+#include <stdarg.h>
 
 /* ===========================================================================
  * Thumb Mode functions
@@ -67,6 +70,9 @@ void print_bootlogo();
 /* Clear screen */
 void clear_screen();
 
+/* Unknown framebuffer call (used on screen refresh) */
+void framebuffer_unknown_call();
+
 /*
  * Partitions
  */
@@ -90,6 +96,7 @@ int close_partition(int partition_handle);
 
 /* Format partition */
 int format_partition(const char* partition);
+
 
 /*
  * Miscellaneuos
@@ -329,6 +336,7 @@ int strncmp(const char *str1, const char *str2, int n);
 char* strncpy(char *destination, const char *source, int num);
 int strlen(const char *str);
 int snprintf(char *str, int size, const char *format, ...);
+int vsnprintf(char *str, int size, const char *format, va_list ap);
 
 void* malloc(int size);
 int memcmp(const void *ptr1, const void *ptr2, int num);
@@ -350,3 +358,9 @@ extern const char* bootloader_id;
 
 /* Bootloader version */
 extern const char* bootloader_version;
+
+/* Framebuffer */
+extern uint8_t** framebuffer_ptr;
+
+/* Framebuffer size */
+extern uint32_t* framebuffer_size_ptr;

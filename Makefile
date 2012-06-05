@@ -9,13 +9,18 @@ OBJCOPY := $(CROSS_COMPILE)objcopy
 HOST_CC := gcc
 HOST_CFLAGS :=
 
-CFLAGS := -Os -Wall -Wno-return-type -Wno-main -fno-builtin -mthumb -ffunction-sections -Iinclude
-AFLAGS := -D__ASSEMBLY__ -fno-builtin -mthumb -fPIC -ffunction-sections
-LDFLAGS := -static -nostdlib --gc-sections 
-O ?= .
-OBJS := $(O)/start.o $(O)/bl_0_03_14.o $(O)/bootmenu.o $(O)/fastboot.o 
+LIBGCC := -L $(shell dirname `$(CC) $(CFLAGS) -print-libgcc-file-name`) -lgcc
 
-all: $(O)/bootloader_v8.bin $(O)/bootloader_v8.blob
+CFLAGS := -Os -Wall -Wno-return-type -Wno-main -fno-builtin -fno-stack-protector -march=armv7-a -mthumb -ffunction-sections -Iinclude
+AFLAGS := -D__ASSEMBLY__ -fno-builtin -march=armv7-a -ffunction-sections
+LDFLAGS := -static $(LIBGCC) -nostdlib --gc-sections 
+O ?= .
+
+LIB_OBJS := $(O)/lib/_ashldi3.o $(O)/lib/_ashrdi3.o  $(O)/lib/_div0.o $(O)/lib/_divsi3.o $(O)/lib/_lshrdi3.o $(O)/lib/_modsi3.o  $(O)/lib/_udivsi3.o $(O)/lib/_umodsi3.o 
+BL_OBJS := $(O)/bl_0_03_14.o $(O)/framebuffer.o $(O)/jpeg.o $(O)/bootmenu.o $(O)/fastboot.o 
+OBJS := $(O)/start.o $(LIB_OBJS) $(BL_OBJS)
+
+all: prep $(O)/bootloader_v8.bin $(O)/bootloader_v8.blob
 
 $(O)/%.o : %.c
 	$(CC) $(CFLAGS) -c $< -o $@
@@ -32,7 +37,9 @@ $(O)/bootmenu.bin: $(O)/bootmenu.elf
 $(O)/bootloader_v8.bin: $(O)/bootmenu.bin
 	cp -f bootloader.bin $@
 	dd if=$(O)/bootmenu.bin of=$@ bs=1 seek=577536 conv=notrunc
-	
+	dd if=font.jpg of=$@ bs=1 seek=622592 conv=notrunc
+	dd if=bootlogo.jpg of=$@ bs=1 seek=643072 conv=notrunc
+
 $(O)/blobmaker:
 	$(HOST_CC)  $(HOST_CFLAGS) blobmaker.c -o $@
 	
@@ -40,10 +47,14 @@ $(O)/bootloader_v8.blob: $(O)/blobmaker $(O)/bootloader_v8.bin
 	$(O)/blobmaker $(O)/bootloader_v8.bin $@
 	
 	
-.PHONY: clean
+.PHONY: clean prep
+
+prep:
+	- mkdir $(O)/lib
 
 clean:
 	rm -f $(OBJS)
+	- rmdir $(O)/lib
 	rm -f $(O)/blobmaker
 	rm -f $(O)/bootmenu.elf
 	rm -f $(O)/bootmenu.bin
