@@ -1,7 +1,7 @@
 /* 
- * Acer bootloader boot menu application start file.
+ * Acer bootloader boot menu application fastboot handler
  * 
- * Copyright 2012 (C) Skrilax_CZ
+ * Copyright (C) 2012 Skrilax_CZ
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,24 +19,10 @@
  *
  */
 
-.text
-.thumb
+#ifndef FASTBOOT_H
+#define FASTBOOT_H
 
-.globl _main
-.globl _fastboot_get_var
-.globl _fastboot_oem_command
-.globl _fastboot_continue
-.globl _fastboot_download
+/* Enter fastboot */
+void fastboot_main(void* global_handle, int boot_handle, char* error_msg, int error_msg_size);
 
-#Jumptable
-.align(2)
-_main:
-	b     t_main 
-
-#Trampoline
-.align(4)
-t_main:
-	push  {lr}
-	bl    main
-	pop   {pc}
-
+#endif //!FASTBOOT_H

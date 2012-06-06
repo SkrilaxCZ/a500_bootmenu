@@ -22,6 +22,7 @@
 #include <stddef.h>
 #include <bl_0_03_14.h>
 #include <bootmenu.h>
+#include <fastboot.h>
 #include <framebuffer.h>
 
 /* Boot menu items */
@@ -177,24 +178,24 @@ finish:
 /*
  * Boot Android (returns on ERROR)
  */
-void boot_android_image(const char* partition, int boot_magic_value)
+void boot_android_image(const char* partition, int boot_handle)
 {
-	char* kernel_code = NULL;
-	int kernel_ep = 0;
+	char* bootimg_data = NULL;
+	int bootimg_size = 0;
 	
-	if (!android_load_image(&kernel_code, &kernel_ep, partition))
+	if (!android_load_image(&bootimg_data, &bootimg_size, partition))
 		return;
 	
-	if (!*(kernel_code))
+	if (!*(bootimg_data))
 		return;
 	
-	android_boot_image(kernel_code, kernel_ep, boot_magic_value);
+	android_boot_image(bootimg_data, bootimg_size, boot_handle);
 }
 
 /*
  * Boots normally (returns on ERROR)
  */
-void boot_normal(int boot_partition, int boot_magic_value)
+void boot_normal(int boot_partition, int boot_handle)
 {
 	/* Normal mode frame */
 	bootmenu_basic_frame();
@@ -204,28 +205,28 @@ void boot_normal(int boot_partition, int boot_magic_value)
 		fb_set_status("Booting primary kernel image");
 		fb_refresh();
 		
-		boot_android_image("LNX", boot_magic_value);
+		boot_android_image("LNX", boot_handle);
 	}
 	else
 	{
 		fb_set_status("Booting secondary kernel image");
 		fb_refresh();
 		
-		boot_android_image("AKB", boot_magic_value);
+		boot_android_image("AKB", boot_handle);
 	}
 }
 
 /*
  * Boots to recovery (returns on ERROR)
  */
-void boot_recovery(int boot_magic_value)
+void boot_recovery(int boot_handle)
 {
 	/* Normal mode frame */
 	bootmenu_basic_frame();
 	
 	fb_set_status("Booting recovery kernel image");
 	fb_refresh();
-	boot_android_image("SOS", boot_magic_value);
+	boot_android_image("SOS", boot_handle);
 }
 
 /*
@@ -269,7 +270,7 @@ void bootmenu_basic_frame(void)
 /*
  * Bootmenu error
  */
-void error(void)
+void bootmenu_error(void)
 {
 	bootmenu_basic_frame();
 	fb_printf("%sUnrecoverable bootloader error, please reboot the device manually.", fb_text_color_code(0xFF, 0xFF, 0x01));
@@ -286,9 +287,9 @@ void error(void)
  * - boot partition (primary or secondary) is loaded
  * - can continue boot, and force fastboot or recovery mode
  * 
- * boot magic_boot_argument - pass to boot partition
+ * boot_handle - pass to boot partition
  */
-void main(void* magic, int magic_boot_argument)
+void main(void* global_handle, int boot_handle)
 {
 	/* Selected option in boot menu */
 	int selected_option = 0;
@@ -299,13 +300,14 @@ void main(void* magic, int magic_boot_argument)
 	/* Which kernel image is booted */
 	const char* boot_partition_str;
 	const char* other_boot_partition_str;
+	const char* boot_partition_attempt;
 	
 	/* Debug mode status */
 	const char* debug_mode_str;
 	const char* other_debug_mode_str;
 	
 	/* Print error, from which partition booting failed */
-	const char* boot_partition_attempt = NULL;
+	char error_message[TEXT_LINE_CHARS + 1];
 	
 	/* Line builder - two color codes used */
 	char line_builder[TEXT_LINE_CHARS + 8 + 1];
@@ -313,6 +315,8 @@ void main(void* magic, int magic_boot_argument)
 	int i, l;
 	const char* b;
 	const char* c;
+	
+	error_message[0] = '\0';
 	
 	/* Fill full bootloader version */
 	snprintf(full_bootloader_version, 0x80, bootloader_id, bootloader_version);
@@ -323,9 +327,12 @@ void main(void* magic, int magic_boot_argument)
 	/* Set title */
 	fb_set_title(full_bootloader_version);
 	
-	/* Ensure we have bootloader update */
-	check_bootloader_update(magic);
+	/* Print it */
+	fb_refresh();
 	
+	/* Ensure we have bootloader update */
+	check_bootloader_update(global_handle);
+		
 	/* Read msc command */
 	msc_cmd_read();
 	
@@ -355,18 +362,19 @@ void main(void* magic, int magic_boot_argument)
 	
 	/* Evaluate boot mode */
 	if (this_boot_mode == BM_NORMAL)
-	{
+	{		
 		if (msc_cmd.boot_partition == 0)
 			boot_partition_attempt = "primary (LNX)";
 		else
 			boot_partition_attempt = "secondary (AKB)";
 		
-		boot_normal(msc_cmd.boot_partition, magic_boot_argument);
+		boot_normal(msc_cmd.boot_partition, boot_handle);
+		snprintf(error_message, ARRAY_SIZE(error_message), "ERROR: Invalid %s kernel image.", boot_partition_attempt);
 	}
 	else if (this_boot_mode == BM_RECOVERY)
 	{
-		boot_partition_attempt = "recovery (SOS)";
-		boot_recovery(magic_boot_argument);
+		boot_recovery(boot_handle);
+		snprintf(error_message, ARRAY_SIZE(error_message), "ERROR: Invalid recovery (SOS) kernel image.");
 	}
 	else if (this_boot_mode == BM_FCTRY_RESET)
 	{
@@ -390,15 +398,17 @@ void main(void* magic, int magic_boot_argument)
 		sleep(5000);
 		
 		/* Reboot */
-		reboot(magic);
+		reboot(global_handle);
 		
 		/* Reboot returned */
-		error();
+		bootmenu_error();
 	}
 	else if (this_boot_mode == BM_FASTBOOT)
 	{
-		/* Return -> jump to fastboot */
-		return;
+		/* Load fastboot */
+		fastboot_main(global_handle, boot_handle, error_message, ARRAY_SIZE(error_message));
+		
+		/* Fastboot returned - show bootmenu */
 	}
 	
 	/* Allright - now we're in bootmenu */
@@ -437,10 +447,10 @@ void main(void* magic, int magic_boot_argument)
 		fb_printf("Debug mode: %s\n\n", debug_mode_str);
 		
 		/* Print error if we're stuck in bootmenu */
-		if (boot_partition_attempt)
-			fb_printf("%sERROR: Invalid %s kernel image.\n\n", fb_text_color_code(0xFF, 0xFF, 0x01), boot_partition_attempt);
-		
-		fb_printf("\n");
+		if (error_message[0] != '\0')
+			fb_printf("%s%s\n\n", fb_text_color_code(0xFF, 0xFF, 0x01), error_message);
+		else
+			fb_printf("\n");
 		
 		/* Print options */
 		for (i = 0; i < ARRAY_SIZE(boot_menu_items); i++)
@@ -512,27 +522,30 @@ void main(void* magic, int magic_boot_argument)
 			switch(selected_option)
 			{
 				case 0: /* Reboot */
-					reboot(magic);
+					reboot(global_handle);
 					
 					/* Reboot returned */
-					error();
+					bootmenu_error();
 					
 				case 1: /* Fastboot mode */
-					return;
+					fastboot_main(global_handle, boot_handle, error_message, ARRAY_SIZE(error_message));
+					
+					/* Returned? Continue bootmenu */
+					break;
 				
 				case 2: /* Primary kernel image */
-					boot_partition_attempt = "primary (LNX)";
-					boot_normal(0, magic_boot_argument);
+					boot_normal(0, boot_handle);
+					snprintf(error_message, ARRAY_SIZE(error_message), "ERROR: Invalid primary (LNX) kernel image.");
 					break;
 					
 				case 3: /* Secondary kernel image */
-					boot_partition_attempt = "secondary (AKB)";
-					boot_normal(1, magic_boot_argument);
+					boot_normal(1, boot_handle);
+					snprintf(error_message, ARRAY_SIZE(error_message), "ERROR: Invalid secondary (AKB) kernel image.");
 					break;
 					
 				case 4: /* Recovery kernel image */
-					boot_partition_attempt = "recovery (SOS)";
-					boot_recovery(magic_boot_argument);
+					boot_recovery(boot_handle);
+					snprintf(error_message, ARRAY_SIZE(error_message), "ERROR: Invalid recovery (SOS) kernel image.");
 					break;
 					
 				case 5: /* Toggle boot kernel image */

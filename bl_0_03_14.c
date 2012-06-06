@@ -73,14 +73,21 @@ int  NAKED format_partition(const char* partition)                              
  * Miscellaneuos
  */
 
-int  NAKED is_wifi_only()                                                                                  { ASM_THUMB_B(0x10C5C0); }
+int      NAKED is_wifi_only()                                                                              { ASM_THUMB_B(0x10C5C0); }
+long int NAKED strtol(const char * str, char ** endptr, int base)                                          { ASM_THUMB_B(0x1798A8); }
+
+/*
+ * Fastboot
+ */
+int  NAKED fastboot_load_handle(int* fastboot_handle)                                                      { ASM_THUMB_B(0x11A840); }
+void NAKED fastboot_unload_handle(int fastboot_handle)                                                     { ASM_THUMB_B(0x11A820); }
 
 /*
  * Booting
  */
 
-const char* NAKED android_load_image(char** image_bytes, int* image_ep, const char* partition)             { ASM_THUMB_B(0x10C898); }
-void        NAKED android_boot_image(char* image_bytes, int image_ep, int magic_boot_argument)             { ASM_THUMB_B(0x10CB40); }
+int  NAKED android_load_image(char** bootimg_data, int* bootimg_size, const char* partition)               { ASM_THUMB_B(0x10C898); }
+void NAKED android_boot_image(const char* bootimg_data, int bootimg_size, int boot_handle)                 { ASM_THUMB_B(0x10CB40); }
 
 /* ===========================================================================
  * ARM Mode functions
@@ -113,9 +120,8 @@ void  NAKED sleep(int ms)                                                       
  * Functions using magic argument (need to be reverse engineered more)
  * ===========================================================================
  */
-void NAKED reboot(void* magic)
+void NAKED reboot(void* global_handle)
 {
-	/* magic is on R0 */
 	__asm__
 	(
 		"PUSH    {LR}\n"
@@ -128,7 +134,7 @@ void NAKED reboot(void* magic)
 	
 }
 
-int  NAKED check_bootloader_update(void* magic)
+int  NAKED check_bootloader_update(void* global_handle)
 {
 	/* magic is on R0 */
 	__asm__
@@ -158,7 +164,36 @@ void NAKED get_serial_no(unsigned int* serial_no)
 	);
 }
 
-int  NAKED fastboot_send(void* fb_handle, const char *command, int command_length)    
+/* 
+ * Fastboot related
+ */
+
+void NAKED fastboot_init_unk0(void* global_handle)
+{
+	__asm__
+	(
+		"PUSH    {LR}\n"
+		"LDR     R1, =0xFFFFFA24\n"
+		"LDR     R0, [R0,R1]\n"
+		"LDR     R0, [R0]\n"
+		"BL      0x139C1C\n"
+		"POP     {PC}\n"
+	);
+}
+
+void NAKED fastboot_init_unk1()
+{
+	__asm__
+	(
+		"PUSH    {LR}\n"
+		"LDR     R0, =0x23ED30\n"
+		"LDR     R0, [R0]\n"
+		"BL      0x15F6CC\n"
+		"POP     {PC}\n"
+	);
+}
+
+int  NAKED fastboot_send(int fastboot_handle, const char *command, int command_length)    
 { 
 	__asm__
 	(
@@ -167,24 +202,36 @@ int  NAKED fastboot_send(void* fb_handle, const char *command, int command_lengt
 		"MOV.W   R3, #0x3E8\n"
 		"STR     R3, [SP]\n"
 		"MOV     R3, #0\n"
-		"LDR     R0, [R0]\n"
 		"BL      0x11A734\n"
 		"ADD     SP, SP, #4\n"
 		"POP     {PC}\n"
 	);
 }
 
-int  NAKED fastboot_recv(void* fb_handle, char* cmd_buffer, int buffer_length, int* cmd_length)    
+int  NAKED fastboot_recv0(int fastboot_handle, char* cmd_buffer, int buffer_length, int* cmd_length)    
+{ 
+	__asm__
+	(
+		"PUSH    {R4,LR}\n"
+		"SUB     SP, SP, #4\n"
+		"MOV     R4, #0\n"
+		"STR     R4, [SP]\n"
+		"BL      0x11A780\n"
+		"ADD     SP, SP, #4\n"
+		"POP     {R4,PC}\n"
+	);
+}
+
+int  NAKED fastboot_recv5(int fastboot_handle, char* cmd_buffer, int buffer_length, int* cmd_length)    
 { 
 	__asm__
 	(
 		"PUSH    {R4,LR}\n"
 		"SUB     SP, SP, #8\n"
-		"MOV.W   R4, #0x3E8\n"
+		"MOV.W   R4, #0\n"
 		"STR     R4, [SP]\n"
-		"MOV     R4, #0\n"
+		"MOV     R4, #0x3E8\n"
 		"STR     R4, [SP, #4]\n"
-		"LDR     R0, [R0]\n"
 		"BL      0x11A6DC\n"
 		"ADD     SP, SP, #8\n"
 		"POP     {R4,PC}\n"
@@ -206,3 +253,6 @@ const char* bootloader_version = (const char*)0x18EBF8;
 /* Framebuffer */
 uint8_t** framebuffer_ptr = (uint8_t**)0x23EDA8;
 uint32_t* framebuffer_size_ptr = (uint32_t*)0x23EDA4;
+
+/* Fastboot unknown */
+int* fastboot_unk_handle_var = (int*)0x23EDAC;

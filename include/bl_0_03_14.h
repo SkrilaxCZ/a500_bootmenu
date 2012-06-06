@@ -45,7 +45,7 @@
 /* Update bootloader if we have the blob (partially related to msc) 
  * This function implements FOTA check, that's why recovery & bootloader update is merged.
  */
-int check_bootloader_update(void* magic);
+int check_bootloader_update(void* global_handle);
 
 /*
  * GPIO
@@ -105,21 +105,24 @@ int format_partition(const char* partition);
 /* Check for wifi only tablet (00 - wifi only, 01 - 3G modem */
 int is_wifi_only();
 
+/* For some reason, strtol is not coming with std lib functions */
+long int strtol(const char * str, char ** endptr, int base);
+
 /* Get serial info */
 void get_serial_no(unsigned int* serial_no);
 
-/* Reboot (uses magic argument) */
-void reboot(void* magic);
+/* Reboot */
+void reboot(void* global_handle);
 
 /*
  * Booting
  */
 
 /* Loads Android image, returns NULL for failure, actual return value wasn't used otherwise */
-const char* android_load_image(char** image_bytes, int* image_ep, const char* partition);
+int android_load_image(char** bootimg_data_ptr, int* bootimg_size, const char* partition);
 
 /* Boots Android image, returns in case of error */
-void android_boot_image(char* image_bytes, int image_ep, int magic_boot_argument); 
+void android_boot_image(const char* bootimg_data, int bootimg_size, int boot_handle); 
 
 /*
  * Fastboot
@@ -275,7 +278,7 @@ void android_boot_image(char* image_bytes, int image_ep, int magic_boot_argument
  * The various currently defined names are:
  * 
  *  version             Version of FastBoot protocol supported.
- *                      It should be "0.3" for this document.
+ *                      It should be "0.4" for this document.
  * 
  *  version-bootloader  Version string for the Bootloader.
  * 
@@ -295,31 +298,33 @@ void android_boot_image(char* image_bytes, int image_ep, int magic_boot_argument
  */
 
 /*
- * These functions are not fully reverse engineered!
- */
-
-/*
  * Several RE notes:
  * send / receive get some enum as return value -> bootloader passes on retval 5 or 0 (and stores smth with retval 5)
  */
 
-/* 
- * Maps fastboot partitions onto the real (aka Cache -> CAC).
- * Note; no magic here, just plain partition mapping
+/*
+ * Unknown initialization functions
  */
-//const char* fastboot_get_partition(const char* partition);
+void fastboot_init_unk0(void* global_handle);
+void fastboot_init_unk1();
+
+/*
+ * Load fastboot handle
+ * Returns 0 for OK, 1 for ERROR
+ */
+int fastboot_load_handle(int* fastboot_handle);
+void fastboot_unload_handle(int fastboot_handle);
 
 /*
  * Send to host
  */
-//int fastboot_send(void* fb_handle, const char *command, int command_length, int unk4/* oftenly 0*/, int unk5/* oftenly 1000 */);
-int fastboot_send(void* fb_handle, const char *command, int command_length);
+int fastboot_send(int fastboot_handle, const char *command, int command_length);
 
 /*
  * Receive from host
  */
-//int fastboot_recv(void* fb_handle, char *cmd_buffer, int buffer_length, int* cmd_length, int unk5/* oftenly 0*/, int unk6/* oftenly 1000 */);
-int fastboot_recv(void* fb_handle, char* cmd_buffer, int buffer_length, int* cmd_length);
+int fastboot_recv0(int fastboot_handle, char* cmd_buffer, int buffer_length, int* cmd_length); 
+int fastboot_recv5(int fastboot_handle, char* cmd_buffer, int buffer_length, int* cmd_length);
 
 /* ===========================================================================
  * ARM Mode functions
@@ -364,3 +369,6 @@ extern uint8_t** framebuffer_ptr;
 
 /* Framebuffer size */
 extern uint32_t* framebuffer_size_ptr;
+
+/* Fastboot unknown */
+extern int* fastboot_unk_handle_var;
