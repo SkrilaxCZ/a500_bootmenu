@@ -21,22 +21,24 @@
 
 .text
 .thumb
+.syntax unified
 
 .globl _main
-.globl _fastboot_get_var
-.globl _fastboot_oem_command
-.globl _fastboot_continue
-.globl _fastboot_download
+.globl _fb_compat_println
+.globl _fb_compat_println_error
 
 #Jumptable
 .align(2)
 _main:
-	b     t_main 
+	b.w    main 
 
-#Trampoline
-.align(4)
-t_main:
-	push  {lr}
-	bl    main
-	pop   {pc}
+.align(2)
+_fb_compat_println:
+	b.w    fb_compat_println 
+
+.align(2)
+_fb_compat_println_error:
+	b.w    fb_compat_println_error 
+
+
 

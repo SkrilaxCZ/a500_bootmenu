@@ -405,6 +405,39 @@ void fb_printf(const char* fmt, ...)
 }
 
 /*
+ * Compatibility functions
+ */
+void fb_compat_println(const char* fmt, ...)
+{
+	char buffer[256];
+	
+	/* Parse arguments */
+	va_list args;
+	va_start(args, fmt);
+	vsnprintf(buffer, ARRAY_SIZE(buffer), fmt, args);
+	va_end(args);
+	
+	/* Send it */
+	fb_printf("%s%s\n", fb_text_color_code(text_color.R, text_color.G, text_color.B), buffer);
+	fb_refresh();
+}
+
+void fb_compat_println_error(const char* fmt, ...)
+{
+	char buffer[256];
+	
+	/* Parse arguments */
+	va_list args;
+	va_start(args, fmt);
+	vsnprintf(buffer, ARRAY_SIZE(buffer), fmt, args);
+	va_end(args);
+	
+	/* Send it */
+	fb_printf("%s%s\n", fb_text_color_code(0xFF, 0xFF, 0x01), buffer);
+	fb_refresh();
+}
+
+/*
  * Text color code
  */
 static char text_color_buf[5];

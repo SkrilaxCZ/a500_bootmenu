@@ -74,6 +74,16 @@ void fb_set_status(const char* status_msg);
 void fb_printf(const char* fmt, ...);
 
 /*
+ * Draw line (compatibility mode)
+ */
+void fb_compat_println(const char* fmt, ...);
+
+/*
+ * Draw error line (compatibility mode)
+ */
+void fb_compat_println_error(const char* fmt, ...);
+
+/*
  * Text color code
  */
 const char* fb_text_color_code(uint8_t r, uint8_t g, uint8_t b);

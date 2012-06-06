@@ -622,8 +622,6 @@ void fastboot_main(void* global_handle, int boot_handle, char* error_msg, int er
 				
 				if (!strncmp(partition, "EBT", strlen("EBT")))
 				{
-					/* Don't refresh here, let it do the error report */
-					fb_printf("Flashing bootloader update...\n\n");
 					partition = "CAC";
 					bootloader_flash = 1;
 				}
