@@ -50,8 +50,14 @@ extern struct color title_color;
 /* Text color */
 extern struct color text_color;
 
-/* Highlight color */
+/* Error text color */
+extern struct color error_text_color;
+
+/* Highlighting color */
 extern struct color highlight_color;
+
+/* Highlighted text color */
+extern struct color highlight_text_color;
 
 /*
  * Init framebuffer
@@ -87,12 +93,14 @@ void fb_compat_println_error(const char* fmt, ...);
  * Text color code
  */
 const char* fb_text_color_code(uint8_t r, uint8_t g, uint8_t b);
+const char* fb_text_color_code2(struct color c);
 
 /*
  * Background color code
  * Specify 00, 00, 00 for transparent background
  */
 const char* fb_background_color_code(uint8_t r, uint8_t g, uint8_t b);
+const char* fb_background_color_code2(struct color c);
 
 /*
  * Clear framebuffer

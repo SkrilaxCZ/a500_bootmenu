@@ -86,10 +86,10 @@ void framebuffer_unknown_call();
 int open_partition(const char* partition, int open_type, int* partition_handle);
 
 /* Read partition */
-int read_partition(int partition_handle, void* buffer, int buffer_length, int* processed_bytes);
+int read_partition(int partition_handle, void* buffer, uint32_t buffer_length, uint32_t* processed_bytes);
 
 /* Write partiiton */
-int write_partition(int partition_handle, void* buffer, int data_size, int* processed_bytes);
+int write_partition(int partition_handle, void* buffer, uint32_t data_size, uint32_t* processed_bytes);
 
 /* Close partiiton */
 int close_partition(int partition_handle);
@@ -97,6 +97,8 @@ int close_partition(int partition_handle);
 /* Format partition */
 int format_partition(const char* partition);
 
+/* Get partition info */
+int get_partition_size(const char* partition, uint32_t* partition_size);
 
 /*
  * Miscellaneuos
@@ -106,10 +108,10 @@ int format_partition(const char* partition);
 int is_wifi_only();
 
 /* For some reason, strtol is not coming with std lib functions */
-long int strtol(const char * str, char ** endptr, int base);
+long int strtol(const char* str, char** endptr, int base);
 
 /* Get serial info */
-void get_serial_no(unsigned int* serial_no);
+void get_serial_no(uint32_t* serial_no);
 
 /* Reboot */
 void reboot(void* global_handle);
@@ -119,10 +121,10 @@ void reboot(void* global_handle);
  */
 
 /* Loads Android image, returns NULL for failure, actual return value wasn't used otherwise */
-int android_load_image(char** bootimg_data_ptr, int* bootimg_size, const char* partition);
+int android_load_image(char** bootimg_data_ptr, uint32_t* bootimg_size, const char* partition);
 
 /* Boots Android image, returns in case of error */
-void android_boot_image(const char* bootimg_data, int bootimg_size, int boot_handle); 
+void android_boot_image(const char* bootimg_data, uint32_t bootimg_size, int boot_handle); 
 
 /*
  * Fastboot
@@ -318,13 +320,13 @@ void fastboot_unload_handle(int fastboot_handle);
 /*
  * Send to host
  */
-int fastboot_send(int fastboot_handle, const char *command, int command_length);
+int fastboot_send(int fastboot_handle, const char *command, uint32_t command_length);
 
 /*
  * Receive from host
  */
-int fastboot_recv0(int fastboot_handle, char* cmd_buffer, int buffer_length, int* cmd_length); 
-int fastboot_recv5(int fastboot_handle, char* cmd_buffer, int buffer_length, int* cmd_length);
+int fastboot_recv0(int fastboot_handle, char* cmd_buffer, uint32_t buffer_length, uint32_t* cmd_length); 
+int fastboot_recv5(int fastboot_handle, char* cmd_buffer, uint32_t buffer_length, uint32_t* cmd_length);
 
 /* ===========================================================================
  * ARM Mode functions
@@ -357,9 +359,6 @@ void sleep(int ms);
  * Variables
  * ===========================================================================
  */
-
-/* Bootloader ID */
-extern const char* bootloader_id;
 
 /* Bootloader version */
 extern const char* bootloader_version;

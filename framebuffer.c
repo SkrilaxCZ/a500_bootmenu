@@ -37,7 +37,7 @@
 #define TEXT_Y_OFFSET       (4*FONT_HEIGHT)
 #define TEXT_X_OFFSET       ((SCREEN_WIDTH/2) - (FONT_WIDTH*(TEXT_LINE_CHARS/2)))
 
-#include <gui.h>
+#include <skin.h>
 
 /* Title color */
 struct color title_color =
@@ -57,8 +57,26 @@ struct color text_color =
 	.X = 0x00,
 };
 
-/* Highlight color */
+/* Error text color */
+struct color error_text_color =
+{
+	.R = 0xFF,
+	.G = 0xFF,
+	.B = 0x00,
+	.X = 0x00,
+};
+
+/* Highlighting color */
 struct color highlight_color =
+{
+	.R = 0xFF,
+	.G = 0xFF,
+	.B = 0xFF,
+	.X = 0x00,
+};
+
+/* Highlighted text color */
+struct color highlight_text_color =
 {
 	.R = 0x3F,
 	.G = 0x3F,
@@ -238,9 +256,8 @@ static void fb_draw_string(uint32_t x, uint32_t y, const char* s, struct color* 
  */
 void fb_init()
 {
-	const uint8_t *in;
-	uint8_t *out;
-	uint8_t *jpg_out_data;
+	const uint8_t *in, *cdata;
+	uint8_t *out, *jpg_out_data;
 	int font_size;
 	int jpg_height, jpg_width, jpg_image_size; 
 	int i;
@@ -306,6 +323,45 @@ void fb_init()
 			background = NULL;
 		}
 		
+	}
+	
+	/* Init colors */
+	cdata = (const uint8_t*)(CUSTOM_COLORS_OFFSET);
+	
+	if (!memcmp(cdata, CUSTOM_COLORS_ID, strlen(CUSTOM_COLORS_ID)))
+	{
+		/* We have custom colors */
+		cdata += strlen(CUSTOM_COLORS_ID);
+		
+		/* Title */
+		title_color.R = *cdata++;
+		title_color.G = *cdata++;
+		title_color.B = *cdata++;
+		title_color.X = *cdata++;
+		
+		/* Text */
+		text_color.R = *cdata++;
+		text_color.G = *cdata++;
+		text_color.B = *cdata++;
+		text_color.X = *cdata++;
+		
+		/* Error text */
+		error_text_color.R = *cdata++;
+		error_text_color.G = *cdata++;
+		error_text_color.B = *cdata++;
+		error_text_color.X = *cdata++;
+
+		/* Highlighting color */
+		highlight_color.R = *cdata++;
+		highlight_color.G = *cdata++;
+		highlight_color.B = *cdata++;
+		highlight_color.X = *cdata++;
+		
+		/* Highlighted text */
+		highlight_text_color.R = *cdata++;
+		highlight_text_color.G = *cdata++;
+		highlight_text_color.B = *cdata++;
+		highlight_text_color.X = *cdata++;
 	}
 	
 	text_cur_x = 0;
@@ -418,7 +474,7 @@ void fb_compat_println(const char* fmt, ...)
 	va_end(args);
 	
 	/* Send it */
-	fb_printf("%s%s\n", fb_text_color_code(text_color.R, text_color.G, text_color.B), buffer);
+	fb_printf("%s%s\n", fb_text_color_code2(text_color), buffer);
 	fb_refresh();
 }
 
@@ -433,7 +489,7 @@ void fb_compat_println_error(const char* fmt, ...)
 	va_end(args);
 	
 	/* Send it */
-	fb_printf("%s%s\n", fb_text_color_code(0xFF, 0xFF, 0x01), buffer);
+	fb_printf("%s%s\n", fb_text_color_code2(error_text_color), buffer);
 	fb_refresh();
 }
 
@@ -445,9 +501,20 @@ static char text_color_buf[5];
 const char* fb_text_color_code(uint8_t r, uint8_t g, uint8_t b)
 {
 	text_color_buf[0] = (char)0x1B;
-	text_color_buf[1] = (char)r;
-	text_color_buf[2] = (char)g;
-	text_color_buf[3] = (char)b;
+	text_color_buf[1] = (char)(r ? r : 0x01);
+	text_color_buf[2] = (char)(g ? g : 0x01);
+	text_color_buf[3] = (char)(b ? b : 0x01);
+	text_color_buf[4] = '\0';
+	
+	return text_color_buf;
+}
+
+const char* fb_text_color_code2(struct color c)
+{
+	text_color_buf[0] = (char)0x1B;
+	text_color_buf[1] = (char)(c.R ? c.R : 0x01);
+	text_color_buf[2] = (char)(c.G ? c.G : 0x01);
+	text_color_buf[3] = (char)(c.B ? c.B : 0x01);
 	text_color_buf[4] = '\0';
 	
 	return text_color_buf;
@@ -460,12 +527,31 @@ static char background_color_buf[5];
 
 const char* fb_background_color_code(uint8_t r, uint8_t g, uint8_t b)
 {
-	if (r || b || g)
+	if (r || g || b)
 	{
 		background_color_buf[0] = (char)0x1C;
-		background_color_buf[1] = (char)r;
-		background_color_buf[2] = (char)g;
-		background_color_buf[3] = (char)b;
+		background_color_buf[1] = (char)(r ? r : 0x01);
+		background_color_buf[2] = (char)(g ? g : 0x01);
+		background_color_buf[3] = (char)(b ? b : 0x01);
+		background_color_buf[4] = '\0';
+	}
+	else
+	{
+		background_color_buf[0] = (char)0x1D;
+		background_color_buf[1] = '\0';
+	}
+	
+	return background_color_buf;
+}
+
+const char* fb_background_color_code2(struct color c)
+{
+	if (c.R || c.G || c.B)
+	{
+		background_color_buf[0] = (char)0x1C;
+		background_color_buf[1] = (char)(c.R ? c.R : 0x01);
+		background_color_buf[2] = (char)(c.G ? c.G : 0x01);
+		background_color_buf[3] = (char)(c.B ? c.B : 0x01);
 		background_color_buf[4] = '\0';
 	}
 	else

@@ -39,6 +39,7 @@ $(O)/bootloader_v8.bin: $(O)/bootmenu.bin
 	dd if=$(O)/bootmenu.bin of=$@ bs=1 seek=577536 conv=notrunc
 	dd if=font.jpg of=$@ bs=1 seek=622592 conv=notrunc
 	dd if=bootlogo.jpg of=$@ bs=1 seek=643072 conv=notrunc
+	dd if=/dev/zero of=$@ bs=1 seek=622336 count=256 conv=notrunc
 
 $(O)/blobmaker:
 	$(HOST_CC)  $(HOST_CFLAGS) blobmaker.c -o $@

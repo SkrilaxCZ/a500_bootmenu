@@ -91,15 +91,15 @@ enum key_type
  * Globals
  */
 
+/* Bootloader ID */
+extern const char* bootloader_id;
+
 /* MSC command */
 extern struct msc_command msc_cmd;
 
 /* Current boot modes */
 extern enum boot_mode this_boot_mode;
 extern enum boot_mode msc_boot_mode; 
-
-/* Full bootloader version */
-extern char full_bootloader_version[0x80];
 
 /*
  * Key handling

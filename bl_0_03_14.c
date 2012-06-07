@@ -63,18 +63,19 @@ void NAKED framebuffer_unknown_call()                    { ASM_THUMB_B(0x10ED84)
  * Partitions
  */
 
-int  NAKED open_partition(const char* partition, int open_type, int* partition_handle)                     { ASM_THUMB_B(0x11E648); }
-int  NAKED read_partition(int partition_handle, void* buffer, int buffer_length, int* processed_bytes)     { ASM_THUMB_B(0x11E1A4); }
-int  NAKED write_partition(int partition_handle, void* buffer, int data_size, int* processed_bytes)        { ASM_THUMB_B(0x11E1E0); }
-int  NAKED close_partition(int partition_handle)                                                           { ASM_THUMB_B(0x11E28C); }
-int  NAKED format_partition(const char* partition)                                                         { ASM_THUMB_B(0x11E534); }
+int  NAKED open_partition(const char* partition, int open_type, int* partition_handle)                               { ASM_THUMB_B(0x11E648); }
+int  NAKED read_partition(int partition_handle, void* buffer, uint32_t buffer_length, uint32_t* processed_bytes)     { ASM_THUMB_B(0x11E1A4); }
+int  NAKED write_partition(int partition_handle, void* buffer, uint32_t data_size, uint32_t* processed_bytes)        { ASM_THUMB_B(0x11E1E0); }
+int  NAKED close_partition(int partition_handle)                                                                     { ASM_THUMB_B(0x11E28C); }
+int  NAKED format_partition(const char* partition)                                                                   { ASM_THUMB_B(0x11E534); }
+int  NAKED get_partition_size(const char* partition, uint32_t* partition_size)                                       { ASM_THUMB_B(0x11E790); }
 
 /*
  * Miscellaneuos
  */
 
 int      NAKED is_wifi_only()                                                                              { ASM_THUMB_B(0x10C5C0); }
-long int NAKED strtol(const char * str, char ** endptr, int base)                                          { ASM_THUMB_B(0x1798A8); }
+long int NAKED strtol(const char* str, char** endptr, int base)                                            { ASM_THUMB_B(0x1798A8); }
 
 /*
  * Fastboot
@@ -86,8 +87,8 @@ void NAKED fastboot_unload_handle(int fastboot_handle)                          
  * Booting
  */
 
-int  NAKED android_load_image(char** bootimg_data, int* bootimg_size, const char* partition)               { ASM_THUMB_B(0x10C898); }
-void NAKED android_boot_image(const char* bootimg_data, int bootimg_size, int boot_handle)                 { ASM_THUMB_B(0x10CB40); }
+int  NAKED android_load_image(char** bootimg_data, uint32_t* bootimg_size, const char* partition)          { ASM_THUMB_B(0x10C898); }
+void NAKED android_boot_image(const char* bootimg_data, uint32_t bootimg_size, int boot_handle)            { ASM_THUMB_B(0x10CB40); }
 
 /* ===========================================================================
  * ARM Mode functions
@@ -151,7 +152,7 @@ int  NAKED check_bootloader_update(void* global_handle)
 	);
 }
 
-void NAKED get_serial_no(unsigned int* serial_no)
+void NAKED get_serial_no(uint32_t* serial_no)
 {
 	__asm__
 	(
@@ -193,7 +194,7 @@ void NAKED fastboot_init_unk1()
 	);
 }
 
-int  NAKED fastboot_send(int fastboot_handle, const char *command, int command_length)    
+int  NAKED fastboot_send(int fastboot_handle, const char *command, uint32_t command_length)    
 { 
 	__asm__
 	(
@@ -208,7 +209,7 @@ int  NAKED fastboot_send(int fastboot_handle, const char *command, int command_l
 	);
 }
 
-int  NAKED fastboot_recv0(int fastboot_handle, char* cmd_buffer, int buffer_length, int* cmd_length)    
+int  NAKED fastboot_recv0(int fastboot_handle, char* cmd_buffer, uint32_t buffer_length, uint32_t* cmd_length)    
 { 
 	__asm__
 	(
@@ -222,7 +223,7 @@ int  NAKED fastboot_recv0(int fastboot_handle, char* cmd_buffer, int buffer_leng
 	);
 }
 
-int  NAKED fastboot_recv5(int fastboot_handle, char* cmd_buffer, int buffer_length, int* cmd_length)    
+int  NAKED fastboot_recv5(int fastboot_handle, char* cmd_buffer, uint32_t buffer_length, uint32_t* cmd_length)    
 { 
 	__asm__
 	(
@@ -243,9 +244,6 @@ int  NAKED fastboot_recv5(int fastboot_handle, char* cmd_buffer, int buffer_leng
  * Variables
  * ===========================================================================
  */
-
-/* Bootloader ID */
-const char* bootloader_id = (const char*)0x18EBD4;
 
 /* Bootloader version */
 const char* bootloader_version = (const char*)0x18EBF8;

@@ -80,6 +80,12 @@ inline int fastboot_status_ok(int status) { return status == 0 || status == 5; }
  * ===========================================================================
  */
 
+/* Full Bootloader version */
+void fastboot_get_var_bootloader_id(char* reply_buffer, int reply_buffer_size)
+{
+	strncpy(reply_buffer, bootloader_id, reply_buffer_size);
+}
+
 /* Bootloader version */
 void fastboot_get_var_bootloader_version(char* reply_buffer, int reply_buffer_size)
 {
@@ -178,6 +184,10 @@ void fastboot_get_var_product(char* reply_buffer, int reply_buffer_size)
 /* List of fastboot variables */
 struct fastboot_get_var_list_item fastboot_variable_table[] = 
 {
+	{
+		.var_name = "id-bootloader",
+		.var_handler = &fastboot_get_var_bootloader_id,
+	},
 	{
 		.var_name = "version-bootloader",
 		.var_handler = &fastboot_get_var_bootloader_version,
@@ -297,6 +307,9 @@ int fastboot_oem_cmd_sbk(int fastboot_handle)
 	{
 		key = wait_for_key_event();
 	} while (key != KEY_POWER);
+	
+	fb_clear();
+	fb_refresh();
 	
 	return fastboot_status_ok(fastboot_status) == 0;
 }
@@ -442,7 +455,7 @@ struct fastboot_partition_id fastboot_partitions[] =
 		.partition_id = "AKB",
 	},
 	{
-		.fastboot_id = "data",
+		.fastboot_id = "userdata",
 		.partition_id = "UDA",
 	},
 };
@@ -470,9 +483,10 @@ void fastboot_main(void* global_handle, int boot_handle, char* error_msg, int er
 	char cmd_buffer[0x100];
 	char reply_buffer[0x100];
 	char* cmd_pointer = cmd_buffer;
+	char* reply_pointer = reply_buffer;
 	const char* partition = NULL;
 	char *downloaded_data, *downloaded_data_ptr;
-	int download_size, download_chunk_size, download_left, received_bytes, processed_bytes;
+	uint32_t download_size, download_chunk_size, download_left, received_bytes, partition_size[2], processed_bytes;
 	int fastboot_status, cmd_status;
 	int pt_handle, bootloader_flash;
 	int i;
@@ -590,7 +604,7 @@ void fastboot_main(void* global_handle, int boot_handle, char* error_msg, int er
 					downloaded_data_ptr += download_chunk_size;
 					download_left -= download_chunk_size;
 				}
-								
+				
 				/* Downloading finished */
 				fastboot_status = fastboot_send(fastboot_handle, FASTBOOT_RESP_OK, strlen(FASTBOOT_RESP_OK));
 				if (fastboot_status_ok(fastboot_status))
@@ -616,6 +630,7 @@ void fastboot_main(void* global_handle, int boot_handle, char* error_msg, int er
 				
 				if (partition == NULL)
 				{
+					free(downloaded_data);
 					fastboot_status = 0x30003;
 					goto error;
 				}
@@ -626,12 +641,33 @@ void fastboot_main(void* global_handle, int boot_handle, char* error_msg, int er
 					bootloader_flash = 1;
 				}
 				else
-				{
-					fb_printf("Flashing %s partition...\n\n", partition);
 					bootloader_flash = 0;
+				
+				/* Check size */				
+				if (get_partition_size(partition, partition_size))
+				{
+					fb_printf("Partition %s not found.\n", partition);
+					free(downloaded_data);
+					fastboot_status = 0x30003;
+					goto error;
+				}
+				else if (partition_size[1] == 0 && partition_size[0] < download_size)
+				{
+					/* 
+					 * If partition_size[1] is non-zero, that means we're over 4 GiB, and maximum download size is 700 MiB,
+					 * so we're OK in that case.
+					 */
+					fb_printf("Not enough space in %s partition.\n", partition);
+					free(downloaded_data);
+					fastboot_status = 0x30003;
+					goto error;
 				}
 				
-				fb_refresh();
+				if (!bootloader_flash)
+				{
+					fb_printf("Flashing %s partition...\n\n", partition);
+					fb_refresh();
+				}
 				
 				fastboot_status = open_partition(partition, PARTITION_OPEN_WRITE, &pt_handle);
 				
@@ -750,7 +786,7 @@ void fastboot_main(void* global_handle, int boot_handle, char* error_msg, int er
 				if (!strncmp(partition, "EBT", strlen("EBT")))
 				{
 					/* Don't refresh here, let it do the error report */
-					fb_printf("Erasing the bootloader is not supported.\n\n");
+					fb_printf("Erasing bootloader is not supported.\n\n");
 					fastboot_status = 0x30003;
 					goto error;
 				}
@@ -787,13 +823,14 @@ void fastboot_main(void* global_handle, int boot_handle, char* error_msg, int er
 				
 				/* Prepare default reply */
 				strncpy(reply_buffer, FASTBOOT_RESP_OK, strlen(FASTBOOT_RESP_OK));
+				reply_pointer = reply_buffer + strlen(FASTBOOT_RESP_OK); 
 				
 				/* Append reply */
 				for (i = 0; i < ARRAY_SIZE(fastboot_variable_table); i++)
 				{
 					if (!strncmp(cmd_pointer, fastboot_variable_table[i].var_name, strlen(fastboot_variable_table[i].var_name)))
 					{
-						fastboot_variable_table[i].var_handler(reply_buffer, ARRAY_SIZE(reply_buffer));
+						fastboot_variable_table[i].var_handler(reply_pointer, ARRAY_SIZE(reply_buffer) - strlen(FASTBOOT_RESP_OK));
 						break;
 					}
 				}
@@ -838,7 +875,6 @@ void fastboot_main(void* global_handle, int boot_handle, char* error_msg, int er
 			}
 			else if (!strncmp(cmd_buffer, FASTBOOT_CMD_REBOOT, strlen(FASTBOOT_CMD_REBOOT)))
 			{
-				
 				if (!strncmp(cmd_buffer, FASTBOOT_CMD_REBOOT_BOOTLOADER, strlen(FASTBOOT_CMD_REBOOT_BOOTLOADER)))
 				{
 					memcpy(msc_cmd.boot_command, MSC_CMD_FASTBOOT, strlen(MSC_CMD_FASTBOOT));
@@ -890,12 +926,11 @@ void fastboot_main(void* global_handle, int boot_handle, char* error_msg, int er
 			continue;
 		
 error:
-
 		/* If we got here, we get command error in fastboot_status */
 		snprintf(reply_buffer, ARRAY_SIZE(reply_buffer), FASTBOOT_RESP_FAIL "(%08x)", fastboot_status);
 		fastboot_send(fastboot_handle, reply_buffer, strlen(reply_buffer));
 		
-		fb_printf("%sERROR: Failed to process command %s.\nError(0x%x)\n", fb_text_color_code(0xFF, 0xFF, 0x01), cmd_buffer, fastboot_status);
+		fb_printf("%sERROR: Failed to process command %s.\nError(0x%x)\n", fb_text_color_code2(error_text_color), cmd_buffer, fastboot_status);
 		fb_refresh();
 		
 		/* Unload fastboot handle */

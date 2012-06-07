@@ -25,6 +25,9 @@
 #include <fastboot.h>
 #include <framebuffer.h>
 
+/* Bootloader ID */
+const char* bootloader_id = "Skrilax_CZ's bootloader V8";
+
 /* Boot menu items */
 const char* boot_menu_items[] =
 {
@@ -75,9 +78,6 @@ enum boot_mode this_boot_mode = BM_NORMAL;
 
 /* How to boot from msc command */
 enum boot_mode msc_boot_mode = BM_NORMAL;
-
-/* Full bootloader version */
-char full_bootloader_version[0x80];
 
 /*
  * Is key active
@@ -135,7 +135,7 @@ void msc_cmd_read()
 {
 	struct msc_command my_cmd;
 	int msc_pt_handle;
-	int processed_bytes;
+	uint32_t processed_bytes;
 	
 	msc_pt_handle = 0;
 	
@@ -161,7 +161,7 @@ finish:
 void msc_cmd_write()
 {
 	int msc_pt_handle;
-	int processed_bytes;
+	uint32_t processed_bytes;
 	
 	msc_pt_handle = 0;
 	
@@ -181,7 +181,7 @@ finish:
 void boot_android_image(const char* partition, int boot_handle)
 {
 	char* bootimg_data = NULL;
-	int bootimg_size = 0;
+	uint32_t bootimg_size = 0;
 	
 	if (!android_load_image(&bootimg_data, &bootimg_size, partition))
 		return;
@@ -273,7 +273,7 @@ void bootmenu_basic_frame(void)
 void bootmenu_error(void)
 {
 	bootmenu_basic_frame();
-	fb_printf("%sUnrecoverable bootloader error, please reboot the device manually.", fb_text_color_code(0xFF, 0xFF, 0x01));
+	fb_printf("%sUnrecoverable bootloader error, please reboot the device manually.", fb_text_color_code2(error_text_color));
 	
 	while (1)
 		sleep(1000);
@@ -317,15 +317,12 @@ void main(void* global_handle, int boot_handle)
 	const char* c;
 	
 	error_message[0] = '\0';
-	
-	/* Fill full bootloader version */
-	snprintf(full_bootloader_version, 0x80, bootloader_id, bootloader_version);
-	
+		
 	/* Initialize framebuffer */
 	fb_init();
 	
 	/* Set title */
-	fb_set_title(full_bootloader_version);
+	fb_set_title(bootloader_id);
 	
 	/* Print it */
 	fb_refresh();
@@ -448,7 +445,7 @@ void main(void* global_handle, int boot_handle)
 		
 		/* Print error if we're stuck in bootmenu */
 		if (error_message[0] != '\0')
-			fb_printf("%s%s\n\n", fb_text_color_code(0xFF, 0xFF, 0x01), error_message);
+			fb_printf("%s%s\n\n", fb_text_color_code2(error_text_color), error_message);
 		else
 			fb_printf("\n");
 		
@@ -461,13 +458,13 @@ void main(void* global_handle, int boot_handle)
 			
 			if (i == selected_option)
 			{
-				b = fb_background_color_code(text_color.R, text_color.G, text_color.B);
-				c = fb_text_color_code(highlight_color.R, highlight_color.G, highlight_color.B);
+				b = fb_background_color_code2(highlight_color);
+				c = fb_text_color_code2(highlight_text_color);
 			}
 			else
 			{
 				b = fb_background_color_code(0, 0, 0);
-				c = fb_text_color_code(text_color.R, text_color.G, text_color.B);
+				c = fb_text_color_code2(text_color);
 			}
 			
 			if (i == 5)

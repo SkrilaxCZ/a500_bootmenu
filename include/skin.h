@@ -19,8 +19,8 @@
  *
  */
 
-#ifndef GUI_H
-#define GUI_H
+#ifndef SKIN_H
+#define SKIN_H
 
 /* Required font properties */
 
@@ -30,10 +30,15 @@
 #define FIRST_CHAR             32
 #define NUM_CHARS              96
 
+/* Images */
+
+#define CUSTOM_COLORS_ID       "CLRS"
+#define CUSTOM_COLORS_OFFSET   0x19FF00
+
 #define FONT_OFFSET            0x1A0000
 #define FONT_SIZE_LIMIT        0x5000
 
 #define BOOTLOGO_OFFSET        0x1A5000
 #define BOOTLOGO_SIZE_LIMIT    0x32000
 
-#endif //!GUI_H
+#endif //!SKIN_H
