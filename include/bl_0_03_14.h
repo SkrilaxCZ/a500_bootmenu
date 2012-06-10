@@ -77,13 +77,24 @@ void framebuffer_unknown_call();
  * Partitions
  */
 
-#define PARTITION_OPEN_READ     1
-#define PARTITION_OPEN_WRITE    2
+/* Partition open type */
+#define PARTITION_OPEN_READ         1
+#define PARTITION_OPEN_WRITE        2
+
+/* Partition set position origin */
+#define PARTITION_SETPOS_ABSOLUTE   0
+#define PARTITION_SETPOS_RELATIVE   1
 
 /* use LNX, SOS, CAC as partition ID */
 
 /* Open partition */
 int open_partition(const char* partition, int open_type, int* partition_handle);
+
+/* Get partition position */
+int get_partition_position(int partition_handle, uint64_t* postition);
+
+/* Set partition position */
+int set_partition_position(int partition_handle, int64_t offset, int origin);
 
 /* Read partition */
 int read_partition(int partition_handle, void* buffer, uint32_t buffer_length, uint32_t* processed_bytes);
@@ -98,7 +109,7 @@ int close_partition(int partition_handle);
 int format_partition(const char* partition);
 
 /* Get partition info */
-int get_partition_size(const char* partition, uint32_t* partition_size);
+int get_partition_size(const char* partition, uint64_t* partition_size);
 
 /*
  * Miscellaneuos

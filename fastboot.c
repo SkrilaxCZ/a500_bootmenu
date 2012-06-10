@@ -486,7 +486,8 @@ void fastboot_main(void* global_handle, int boot_handle, char* error_msg, int er
 	char* reply_pointer = reply_buffer;
 	const char* partition = NULL;
 	char *downloaded_data, *downloaded_data_ptr;
-	uint32_t download_size, download_chunk_size, download_left, received_bytes, partition_size[2], processed_bytes;
+	uint32_t download_size, download_chunk_size, download_left, received_bytes, processed_bytes;
+	uint64_t partition_size;
 	int fastboot_status, cmd_status;
 	int pt_handle, bootloader_flash;
 	int i;
@@ -520,7 +521,7 @@ void fastboot_main(void* global_handle, int boot_handle, char* error_msg, int er
 			fastboot_init = 1;
 		}
 		
-		/* Set error state, if it persists till the loop end then it's error */
+		/* Set error state, if it persists till the end then it's error */
 		fastboot_error = 1;
 		
 		/* Receive command */
@@ -528,7 +529,7 @@ void fastboot_main(void* global_handle, int boot_handle, char* error_msg, int er
 		
 		if (fastboot_status == 0)
 			fastboot_status = fastboot_recv0(fastboot_handle, cmd_buffer, ARRAY_SIZE(cmd_buffer), &received_bytes);
-		else
+		else /* fastboot_status == 5 */
 			fastboot_status = fastboot_recv5(fastboot_handle, cmd_buffer, ARRAY_SIZE(cmd_buffer), &received_bytes);
 		
 		/* Reset framebuffer */
@@ -643,20 +644,16 @@ void fastboot_main(void* global_handle, int boot_handle, char* error_msg, int er
 				else
 					bootloader_flash = 0;
 				
-				/* Check size */				
-				if (get_partition_size(partition, partition_size))
+				/* Check size */
+				if (get_partition_size(partition, &partition_size))
 				{
 					fb_printf("Partition %s not found.\n", partition);
 					free(downloaded_data);
 					fastboot_status = 0x30003;
 					goto error;
 				}
-				else if (partition_size[1] == 0 && partition_size[0] < download_size)
+				else if (partition_size < download_size)
 				{
-					/* 
-					 * If partition_size[1] is non-zero, that means we're over 4 GiB, and maximum download size is 700 MiB,
-					 * so we're OK in that case.
-					 */
 					fb_printf("Not enough space in %s partition.\n", partition);
 					free(downloaded_data);
 					fastboot_status = 0x30003;

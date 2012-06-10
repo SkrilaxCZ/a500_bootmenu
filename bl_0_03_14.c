@@ -64,11 +64,13 @@ void NAKED framebuffer_unknown_call()                    { ASM_THUMB_B(0x10ED84)
  */
 
 int  NAKED open_partition(const char* partition, int open_type, int* partition_handle)                               { ASM_THUMB_B(0x11E648); }
+int  NAKED get_partition_position(int partition_handle, uint64_t* postition)                                         { ASM_THUMB_B(0x11E26C); }
+int  NAKED set_partition_position(int partition_handle, int64_t offset, int origin)                                  { ASM_THUMB_B(0x11E248); }
 int  NAKED read_partition(int partition_handle, void* buffer, uint32_t buffer_length, uint32_t* processed_bytes)     { ASM_THUMB_B(0x11E1A4); }
 int  NAKED write_partition(int partition_handle, void* buffer, uint32_t data_size, uint32_t* processed_bytes)        { ASM_THUMB_B(0x11E1E0); }
 int  NAKED close_partition(int partition_handle)                                                                     { ASM_THUMB_B(0x11E28C); }
 int  NAKED format_partition(const char* partition)                                                                   { ASM_THUMB_B(0x11E534); }
-int  NAKED get_partition_size(const char* partition, uint32_t* partition_size)                                       { ASM_THUMB_B(0x11E790); }
+int  NAKED get_partition_size(const char* partition, uint64_t* partition_size)                                       { ASM_THUMB_B(0x11E790); }
 
 /*
  * Miscellaneuos

@@ -26,7 +26,7 @@
 #include <framebuffer.h>
 
 /* Bootloader ID */
-const char* bootloader_id = "Skrilax_CZ's bootloader V8";
+const char* bootloader_id = "Skrilax_CZ's bootloader V9";
 
 /* Boot menu items */
 const char* boot_menu_items[] =
@@ -152,7 +152,7 @@ void msc_cmd_read()
 		
 finish:
 	close_partition(msc_pt_handle);
-	return;	
+	return;
 }
 
 /*

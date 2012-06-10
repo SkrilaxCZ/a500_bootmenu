@@ -20,7 +20,9 @@ LIB_OBJS := $(O)/lib/_ashldi3.o $(O)/lib/_ashrdi3.o  $(O)/lib/_div0.o $(O)/lib/_
 BL_OBJS := $(O)/bl_0_03_14.o $(O)/framebuffer.o $(O)/jpeg.o $(O)/bootmenu.o $(O)/fastboot.o 
 OBJS := $(O)/start.o $(LIB_OBJS) $(BL_OBJS)
 
-all: prep $(O)/bootloader_v8.bin $(O)/bootloader_v8.blob
+BOOTLOADER := bootloader_v9
+
+all: prep $(O)/$(BOOTLOADER).bin $(O)/$(BOOTLOADER).blob
 
 $(O)/%.o : %.c
 	$(CC) $(CFLAGS) -c $< -o $@
@@ -34,7 +36,7 @@ $(O)/bootmenu.elf: $(OBJS)
 $(O)/bootmenu.bin: $(O)/bootmenu.elf
 	$(OBJCOPY) -O binary $(O)/bootmenu.elf -R .note -R .comment -R .bss -S $@
 
-$(O)/bootloader_v8.bin: $(O)/bootmenu.bin
+$(O)/$(BOOTLOADER).bin: $(O)/bootmenu.bin
 	cp -f bootloader.bin $@
 	dd if=$(O)/bootmenu.bin of=$@ bs=1 seek=577536 conv=notrunc
 	dd if=font.jpg of=$@ bs=1 seek=622592 conv=notrunc
@@ -44,8 +46,8 @@ $(O)/bootloader_v8.bin: $(O)/bootmenu.bin
 $(O)/blobmaker:
 	$(HOST_CC)  $(HOST_CFLAGS) blobmaker.c -o $@
 	
-$(O)/bootloader_v8.blob: $(O)/blobmaker $(O)/bootloader_v8.bin
-	$(O)/blobmaker $(O)/bootloader_v8.bin $@
+$(O)/$(BOOTLOADER).blob: $(O)/blobmaker $(O)/$(BOOTLOADER).bin
+	$(O)/blobmaker $(O)/$(BOOTLOADER).bin $@
 	
 	
 .PHONY: clean prep
@@ -59,5 +61,5 @@ clean:
 	rm -f $(O)/blobmaker
 	rm -f $(O)/bootmenu.elf
 	rm -f $(O)/bootmenu.bin
-	rm -f $(O)/bootloader_v8.bin
-	rm -f $(O)/bootloader_v8.blob
+	rm -f $(O)/$(BOOTLOADER).bin
+	rm -f $(O)/$(BOOTLOADER).blob
