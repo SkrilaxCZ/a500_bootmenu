@@ -142,7 +142,7 @@ struct ext2_inode
 			uint32_t dir_blocks[INDIRECT_BLOCKS];
 			uint32_t indir_block;
 			uint32_t double_indir_block;
-			uint32_t tripple_indir_block;
+			uint32_t triple_indir_block;
 		} blocks;
 		char symlink[60];
 	} b;
@@ -210,12 +210,6 @@ typedef struct ext4_extent_header* ext4_extent_header_t;
 static struct ext2_data* ext2fs_root = NULL;
 static ext2fs_node_t ext2fs_file = NULL;
 static int symlinknest = 0;
-static uint32_t* indir1_block = NULL;
-static int indir1_size = 0;
-static int indir1_blkno = -1;
-static uint32_t* indir2_block = NULL;
-static int indir2_size = 0;
-static int indir2_blkno = -1;
 static unsigned int inode_size;
 static int ext_pt_handle = -1;
 static uint64_t pt_size;
@@ -293,7 +287,7 @@ static void ext2fs_free_node(ext2fs_node_t node, ext2fs_node_t currroot)
 		free(node);
 }
 
-static struct ext4_extent_header* ext4_find_leaf(struct ext2_data* data, char* buf, struct ext4_extent_header* ext_block, uint32_t fileblock)
+static ext4_extent_header_t ext4_find_leaf(struct ext2_data* data, char* buf, ext4_extent_header_t ext_block, uint32_t fileblock)
 {
 	struct ext4_extent_idx* index;
 	
@@ -325,7 +319,7 @@ static struct ext4_extent_header* ext4_find_leaf(struct ext2_data* data, char* b
 		if (ext2fs_devread(block, 0, EXT2_BLOCK_SIZE(data), buf))
 			return NULL;
 		
-		ext_block = (struct ext4_extent_header*)buf;
+		ext_block = (ext4_extent_header_t)buf;
 	}
 }
 
@@ -338,11 +332,11 @@ static uint64_t ext2fs_read_block(ext2fs_node_t node, uint64_t fileblock)
 	int log2_blksz = LOG2_EXT2_BLOCK_SIZE(data);
 	int status;
 
-	/* ext4 extension */
+	/* Ext4 extension */
 	if (__le32_to_cpu(inode->flags) & EXT4_EXTENTS_FLAG)
 	{
 		char buf[EXT2_BLOCK_SIZE(data)];
-		struct ext4_extent_header* leaf;
+		ext4_extent_header_t leaf;
 		struct ext4_extent* ext;
 		int i;
 		
@@ -375,136 +369,79 @@ static uint64_t ext2fs_read_block(ext2fs_node_t node, uint64_t fileblock)
 		else
 			return -1;
 	}
+	
 	/* Direct blocks.  */
 	if (fileblock < INDIRECT_BLOCKS)
 		blknr = __le32_to_cpu(inode->b.blocks.dir_blocks[fileblock]);
 	/* Indirect.  */
 	else if (fileblock < (INDIRECT_BLOCKS + (blksz / 4))) 
 	{
-		if (indir1_block == NULL) 
+		uint32_t indir[blksz / 4];
+
+		status = ext2fs_devread(__le32_to_cpu(inode->b.blocks.indir_block) << log2_blksz, 0, blksz, (char*)indir);
+		if (status) 
 		{
-			indir1_block = (uint32_t*)malloc(blksz);
-			if (indir1_block == NULL) 
-			{
-				printf("** ext2fs read block (indir 1) malloc failed. **\n");
-				return -1;
-			}
-			indir1_size = blksz;
-			indir1_blkno = -1;
-		}
-		if (blksz != indir1_size) 
-		{
-			free (indir1_block);
-			indir1_block = NULL;
-			indir1_size = 0;
-			indir1_blkno = -1;
-			indir1_block = (uint32_t*)malloc(blksz);
-			if (indir1_block == NULL) 
-			{
-				printf("** ext2fs read block (indir 1) malloc failed. **\n");
-				return -1;
-			}
-			indir1_size = blksz;
-		}
-		if ((__le32_to_cpu(inode->b.blocks.indir_block) << log2_blksz) != indir1_blkno) 
-		{
-			status = ext2fs_devread(__le32_to_cpu(inode->b.blocks.indir_block) << log2_blksz, 0, blksz, (char*) indir1_block);
-			if (status) 
-			{
-				printf("** ext2fs read block (indir 1) failed. **\n");
-				return -1;
-			}
-			indir1_blkno = __le32_to_cpu(inode->b.blocks.indir_block) << log2_blksz;
-		}
-		blknr = __le32_to_cpu(indir1_block[fileblock - INDIRECT_BLOCKS]);
+			printf("** ext2fs read block (indir 1) failed. **\n");
+			return -1;
+		}		
+		blknr = __le32_to_cpu(indir[fileblock - INDIRECT_BLOCKS]);
 	}
 	/* Double indirect.  */
 	else if (fileblock < (INDIRECT_BLOCKS + (blksz / 4 * (blksz / 4 + 1)))) 
 	{
-		unsigned int perblock = blksz / 4;
-		unsigned int rblock = fileblock - (INDIRECT_BLOCKS  + blksz / 4);
+		uint32_t perblock = blksz / 4;
+		uint32_t rblock = fileblock - (INDIRECT_BLOCKS  + blksz / 4);
+		uint32_t indir[blksz / 4];
 
-		if (indir1_block == NULL) 
+		status = ext2fs_devread(__le32_to_cpu(inode->b.blocks.double_indir_block) << log2_blksz, 0, blksz, (char*)indir);
+		if (status) 
 		{
-			indir1_block = (uint32_t*)malloc(blksz);
-			if (indir1_block == NULL) 
-			{
-				printf("** ext2fs read block (indir 2 1) malloc failed. **\n");
-				return -1;
-			}
-			indir1_size = blksz;
-			indir1_blkno = -1;
-		}
-		
-		if (blksz != indir1_size) 
-		{
-			free (indir1_block);
-			indir1_block = NULL;
-			indir1_size = 0;
-			indir1_blkno = -1;
-			indir1_block = (uint32_t*)malloc(blksz);
-			if (indir1_block == NULL) 
-			{
-				printf("** ext2fs read block (indir 2 1) malloc failed. **\n");
-				return -1;
-			}
-			indir1_size = blksz;
-		}
-		
-		if ((__le32_to_cpu(inode->b.blocks.double_indir_block) << log2_blksz) != indir1_blkno) 
-		{
-			status = ext2fs_devread(__le32_to_cpu(inode->b.blocks.double_indir_block) << log2_blksz, 0, blksz, (char*) indir1_block);
-			if (status) 
-			{
-				printf("** ext2fs read block (indir 2 1) failed. **\n");
-				return -1;
-			}
-			indir1_blkno = __le32_to_cpu(inode->b.blocks.double_indir_block) << log2_blksz;
+			printf("** ext2fs read block (indir 2 1) failed. **\n");
+			return -1;
 		}
 
-		if (indir2_block == NULL) 
+		status = ext2fs_devread(__le32_to_cpu(indir[rblock / perblock]) << log2_blksz, 0, blksz, (char*)indir);
+		if (status) 
 		{
-			indir2_block = (uint32_t*)malloc(blksz);
-			if (indir2_block == NULL) 
-			{
-				printf("** ext2fs read block (indir 2 2) malloc failed. **\n");
-				return 1;
-			}
-			indir2_size = blksz;
-			indir2_blkno = -1;
+			printf("** ext2fs read block (indir 2 2) failed. **\n");
+			return -1;
 		}
-		
-		if (blksz != indir2_size) 
-		{
-			free (indir2_block);
-			indir2_block = NULL;
-			indir2_size = 0;
-			indir2_blkno = -1;
-			indir2_block = (uint32_t*)malloc(blksz);
-			if (indir2_block == NULL) 
-			{
-				printf("** ext2fs read block (indir 2 2) malloc failed. **\n");
-				return -1;
-			}
-			indir2_size = blksz;
-		}
-		
-		if ((__le32_to_cpu(indir1_block[rblock / perblock]) << log2_blksz) != indir2_blkno) 
-		{
-			status = ext2fs_devread(__le32_to_cpu(indir1_block[rblock / perblock]) << log2_blksz, 0, blksz, (char*) indir2_block);
-			if (status) 
-			{
-				printf("** ext2fs read block (indir 2 2) failed. **\n");
-				return -1;
-			}
-			indir2_blkno = __le32_to_cpu(indir1_block[rblock / perblock]) << log2_blksz;
-		}
-		blknr = __le32_to_cpu(indir2_block[rblock % perblock]);
+
+		blknr = __le32_to_cpu(indir[rblock % perblock]);
 	}
 	/* Tripple indirect.  */
-	else 
+	else if (fileblock < INDIRECT_BLOCKS + blksz / 4 * (blksz / 4 + 1) + (blksz / 4) * (blksz / 4) * (blksz / 4 + 1))
 	{
-		printf("** ext2fs doesn't support tripple indirect blocks. **\n");
+		uint32_t perblock = blksz / 4;
+		uint32_t rblock = fileblock - (INDIRECT_BLOCKS + blksz / 4 * (blksz / 4 + 1));
+		uint32_t indir[blksz / 4];
+		
+		status = ext2fs_devread(__le32_to_cpu(inode->b.blocks.triple_indir_block) << log2_blksz, 0, blksz, (char*)indir);
+		if (status) 
+		{
+			printf("** ext2fs read block (indir 3 1) failed. **\n");
+			return -1;
+		}
+		
+		status = ext2fs_devread(__le32_to_cpu(indir[rblock / perblock]) << log2_blksz, 0, blksz, (char*)indir);
+		if (status) 
+		{
+			printf("** ext2fs read block (indir 3 2) failed. **\n");
+			return -1;
+		}
+		
+		status = ext2fs_devread(__le32_to_cpu(indir[rblock / perblock]) << log2_blksz, 0, blksz, (char*)indir);
+		if (status) 
+		{
+			printf("** ext2fs read block (indir 3 3) failed. **\n");
+			return -1;
+		}
+		
+		blknr = __le32_to_cpu(indir[rblock % perblock]);
+	}
+	else
+	{
+		printf("** ext2fs doesn't support quadruple indirect blocks. **\n");
 		return -1;
 	}
 	
@@ -911,21 +848,6 @@ int ext2fs_close(void)
 		ext2fs_root = NULL;
 	}
 	
-	if (indir1_block != NULL) 
-	{
-		free(indir1_block);
-		indir1_block = NULL;
-		indir1_size = 0;
-		indir1_blkno = -1;
-	}
-	
-	if (indir2_block != NULL) 
-	{
-		free(indir2_block);
-		indir2_block = NULL;
-		indir2_size = 0;
-		indir2_blkno = -1;
-	}
 	return 0;
 }
 
