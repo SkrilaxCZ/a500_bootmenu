@@ -408,15 +408,15 @@ void fb_printf(const char* fmt, ...)
 	
 	ptr = buffer;
 	
+	/* We're out of the buffer, so don't print anything */
+	if (text_cur_y >= TEXT_LINES)
+		return;
+	
 	while (*ptr)
 	{
-		/* Color code */
-		
+		/* Line feed */
 		if (*ptr == '\n')
 		{
-			if (text_cur_y >= TEXT_LINES)
-				break;
-			
 			text[text_cur_y][text_cur_x] = '\0';
 			
 			text_cur_y++;
@@ -613,7 +613,7 @@ void fb_refresh()
 	b.G = 0;
 	b.B = 0;
 	
-	for (i = 0; i <= text_cur_y; i++)
+	for (i = 0; i <= text_cur_y && i < TEXT_LINES; i++)
 		fb_draw_string(TEXT_X_OFFSET, TEXT_Y_OFFSET + i * FONT_HEIGHT, text[i], &b, &c);
 		
 	/* Push and refresh framebuffer */

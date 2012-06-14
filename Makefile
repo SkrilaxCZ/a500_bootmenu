@@ -16,13 +16,28 @@ AFLAGS := -D__ASSEMBLY__ -fno-builtin -march=armv7-a -ffunction-sections
 LDFLAGS := -static $(LIBGCC) -nostdlib --gc-sections 
 O ?= .
 
-LIB_OBJS := $(O)/lib/_ashldi3.o $(O)/lib/_ashrdi3.o  $(O)/lib/_div0.o $(O)/lib/_divsi3.o $(O)/lib/_lshrdi3.o $(O)/lib/_modsi3.o  $(O)/lib/_udivsi3.o $(O)/lib/_umodsi3.o 
-BL_OBJS := $(O)/bl_0_03_14.o $(O)/framebuffer.o $(O)/jpeg.o $(O)/bootmenu.o $(O)/fastboot.o 
+LIB_OBJS := $(O)/lib/_ashldi3.o $(O)/lib/_ashrdi3.o  $(O)/lib/_div0.o $(O)/lib/_divsi3.o $(O)/lib/_lshrdi3.o $(O)/lib/_modsi3.o  $(O)/lib/_udivsi3.o $(O)/lib/_umodsi3.o $(O)/lib/stdlib.o  
+BL_OBJS := $(O)/bl_0_03_14.o $(O)/framebuffer.o $(O)/jpeg.o $(O)/bootmenu.o $(O)/fastboot.o $(O)/ext2fs.o
 OBJS := $(O)/start.o $(LIB_OBJS) $(BL_OBJS)
 
 BOOTLOADER := bootloader_v9
 
-all: prep $(O)/$(BOOTLOADER).bin $(O)/$(BOOTLOADER).blob
+# Attempt to create a output directory.
+$(shell [ -d ${O} ] || mkdir -p ${O})
+
+# Verify if it was successful.
+OUTPUT_DIR := $(shell cd $(O) && /bin/pwd)
+$(if $(OUTPUT_DIR),,$(error output directory "$(O)" does not exist))
+
+#Attempt to create a lib subdirectory
+$(shell [ -d ${O}/lib ] || mkdir -p ${O}/lib)
+
+# Verify if it was successful.
+OUTPUT_DIR := $(shell cd $(O)/lib && /bin/pwd)
+$(if $(OUTPUT_DIR),,$(error output directory "$(O)/lib" does not exist))
+
+#Targets
+all: $(O)/$(BOOTLOADER).bin $(O)/$(BOOTLOADER).blob
 
 $(O)/%.o : %.c
 	$(CC) $(CFLAGS) -c $< -o $@
@@ -48,16 +63,12 @@ $(O)/blobmaker:
 	
 $(O)/$(BOOTLOADER).blob: $(O)/blobmaker $(O)/$(BOOTLOADER).bin
 	$(O)/blobmaker $(O)/$(BOOTLOADER).bin $@
-	
-	
-.PHONY: clean prep
 
-prep:
-	- mkdir $(O)/lib
+.PHONY: prep
 
+#Clean
 clean:
 	rm -f $(OBJS)
-	- rmdir $(O)/lib
 	rm -f $(O)/blobmaker
 	rm -f $(O)/bootmenu.elf
 	rm -f $(O)/bootmenu.bin

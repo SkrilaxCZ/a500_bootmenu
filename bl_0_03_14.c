@@ -103,6 +103,7 @@ void NAKED android_boot_image(const char* bootimg_data, uint32_t bootimg_size, i
  * You can use your own of course, but these are found in the bootloader
  */
 
+int   NAKED strcmp(const char *str1, const char *str2)                                 { ASM_ARM_B(0x17B120); }
 int   NAKED strncmp(const char *str1, const char *str2, int n)                         { ASM_ARM_B(0x17B1B8); }
 char* NAKED strncpy(char *destination, const char *source, int num)                    { ASM_ARM_B(0x17B0C8); }
 int   NAKED strlen(const char *str)                                                    { ASM_ARM_B(0x17B0F8); }

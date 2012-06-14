@@ -350,6 +350,7 @@ int fastboot_recv5(int fastboot_handle, char* cmd_buffer, uint32_t buffer_length
  * You can use your own of course, but these are found in the bootloader
  */
 
+int strcmp(const char *str1, const char *str2);
 int strncmp(const char *str1, const char *str2, int n);
 char* strncpy(char *destination, const char *source, int num);
 int strlen(const char *str);

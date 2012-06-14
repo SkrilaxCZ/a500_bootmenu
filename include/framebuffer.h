@@ -22,7 +22,7 @@
 #ifndef FRAMEBUFFER_H
 #define FRAMEBUFFER_H
 
-#define TEXT_LINES          40
+#define TEXT_LINES          39
 #define TEXT_LINE_CHARS     80
 
 /* RGBX color */

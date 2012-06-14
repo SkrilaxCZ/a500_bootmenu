@@ -10,11 +10,11 @@ curbit		.req	r3
 /* lr		.req	r14	*/
 /* pc		.req	r15	*/
 	.text
-	.globl	 __udivsi3
-	.type	__udivsi3 ,function
-	.globl	__aeabi_uidiv
-	.type	__aeabi_uidiv ,function
-	.align	0
+	.globl __udivsi3
+	.type  __udivsi3, function
+	.globl __aeabi_uidiv
+	.type  __aeabi_uidiv, function
+	.align 0
  __udivsi3:
  __aeabi_uidiv:
 	cmp	divisor, #0
@@ -73,6 +73,7 @@ Ldiv0:
 	.size  __udivsi3       , . -  __udivsi3
 
 .globl __aeabi_uidivmod
+.type  __aeabi_uidivmod, function
 __aeabi_uidivmod:
 
 	stmfd	sp!, {r0, r1, ip, lr}
@@ -83,6 +84,7 @@ __aeabi_uidivmod:
 	mov	pc, lr
 
 .globl __aeabi_idivmod
+.type  __aeabi_idivmod, function
 __aeabi_idivmod:
 
 	stmfd	sp!, {r0, r1, ip, lr}

@@ -25,6 +25,8 @@
 #include <bootmenu.h>
 #include <byteorder.h>
 #include <fastboot.h>
+#include <ext2fs.h>
+#include <stdlib.h>
 
 #define FASTBOOT_VERSION               "0.4"
 #define FASTBOOT_SECURE                "no"
@@ -47,6 +49,8 @@
 #define FASTBOOT_CMD_CONTINUE          "continue"
 #define FASTBOOT_CMD_REBOOT            "reboot"
 #define FASTBOOT_CMD_REBOOT_BOOTLOADER "reboot-bootloader"
+
+#define ANDROID_VERSION_PROP_NAME      "ro.build.version.release"
 
 /* Command handlers */
 
@@ -96,6 +100,62 @@ void fastboot_get_var_bootloader_version(char* reply_buffer, int reply_buffer_si
 void fastboot_get_var_baseband_version(char* reply_buffer, int reply_buffer_size)
 {
 	reply_buffer[0] = '\0';
+}
+
+/* Android version */
+void fastboot_get_var_android_version(char* reply_buffer, int reply_buffer_size)
+{
+	int sz, len;
+	char *data, *ptr, *end;
+	
+	/* Mount system partition */
+	if (ext2fs_mount("APP"))
+		return;
+	
+	/* Open build.prop file */
+	sz = ext2fs_open("/build.prop");
+	if (sz == -1)
+		goto fail;
+	
+	/* It's definitely in 1st kB */
+	if (sz > 1024);
+		sz = 1024;
+	
+	data = malloc(sz);
+	if (data == NULL)
+		goto fail;
+	
+	if (ext2fs_read(data, sz) != sz)
+		goto fail2;
+	
+	ptr = data;
+	len = strlen(ANDROID_VERSION_PROP_NAME "=");
+	end = strchr(ptr, '\n');
+	
+	while(1)
+	{
+		if (!strncmp(ptr, ANDROID_VERSION_PROP_NAME "=", len))
+		{
+			ptr += len;
+			len = end - ptr;
+			if (len > reply_buffer_size)
+				len = reply_buffer_size;
+			
+			strncpy(reply_buffer, ptr, len);
+			break;
+		}
+		
+		if (!end)
+			break;
+		
+		ptr = end + 1;
+		end = strchr(ptr, '\n');
+	}
+
+fail2:
+	free(data);
+fail:
+	ext2fs_unmount();
 }
 
 /* Protocol version */
@@ -195,6 +255,10 @@ struct fastboot_get_var_list_item fastboot_variable_table[] =
 	{
 		.var_name = "version-baseband",
 		.var_handler = &fastboot_get_var_baseband_version,
+	},
+	{
+		.var_name = "version-android",
+		.var_handler = &fastboot_get_var_android_version,
 	},
 	{
 		.var_name = "version",
@@ -371,7 +435,7 @@ int fastboot_oem_cmd_oem_lock(int fastboot_handle)
 {
 	int fastboot_status;
 	const char* info_reply = FASTBOOT_RESP_INFO "Seriously, are you kidding me?"; /* Tsk :D */
-	
+
 	fastboot_status = fastboot_send(fastboot_handle, info_reply, strlen(info_reply));
 	return fastboot_status_ok(fastboot_status) == 0;
 }

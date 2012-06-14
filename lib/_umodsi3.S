@@ -11,10 +11,10 @@ curbit		.req	r3
 /* lr		.req	r14	*/
 /* pc		.req	r15	*/
 	.text
-	.globl	 __umodsi3
-	.type  __umodsi3       ,function
+	.globl __umodsi3
+	.type  __umodsi3, function
 	.align 0
- __umodsi3      :
+ __umodsi3:
 	cmp	divisor, #0
 	beq	Ldiv0
 	mov	curbit, #1
