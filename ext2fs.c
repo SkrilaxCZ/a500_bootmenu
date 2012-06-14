@@ -999,6 +999,8 @@ fail:
 
 int ext2fs_unmount(void)
 {
+	ext2fs_close();
+	
 	if (ext_pt_handle != -1)
 	{
 		close_partition(ext_pt_handle);

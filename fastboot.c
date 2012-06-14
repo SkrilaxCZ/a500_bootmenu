@@ -122,11 +122,11 @@ void fastboot_get_var_android_version(char* reply_buffer, int reply_buffer_size)
 		sz = 1024;
 	
 	data = malloc(sz);
-	if (data == NULL)
-		goto fail;
+	if (!data)
+		goto fail2;
 	
 	if (ext2fs_read(data, sz) != sz)
-		goto fail2;
+		goto fail3;
 	
 	ptr = data;
 	len = strlen(ANDROID_VERSION_PROP_NAME "=");
@@ -152,8 +152,10 @@ void fastboot_get_var_android_version(char* reply_buffer, int reply_buffer_size)
 		end = strchr(ptr, '\n');
 	}
 
-fail2:
+fail3:
 	free(data);
+fail2:
+	ext2fs_close();
 fail:
 	ext2fs_unmount();
 }
