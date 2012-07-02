@@ -31,6 +31,13 @@ struct color
 	uint8_t R, G, B, X;
 };
 
+/* Font color */
+struct font_color
+{
+	struct color color;
+	struct color outline;
+};
+
 /* color to int */
 uint32_t clr2int(struct color clr);
 
@@ -45,19 +52,19 @@ struct color int2clr (uint32_t u);
  */
 
 /* Title color */
-extern struct color title_color;
+extern struct font_color title_color;
 
 /* Text color */
-extern struct color text_color;
+extern struct font_color text_color;
 
 /* Error text color */
-extern struct color error_text_color;
+extern struct font_color error_text_color;
 
 /* Highlighting color */
 extern struct color highlight_color;
 
 /* Highlighted text color */
-extern struct color highlight_text_color;
+extern struct font_color highlight_text_color;
 
 /*
  * Init framebuffer
@@ -80,6 +87,11 @@ void fb_set_status(const char* status_msg);
 void fb_printf(const char* fmt, ...);
 
 /*
+ * Draw colored text
+ */
+void fb_color_printf(const char* fmt, const struct color* bkg, const struct font_color* clr, ...);
+
+/*
  * Draw line (compatibility mode)
  */
 void fb_compat_println(const char* fmt, ...);
@@ -93,14 +105,20 @@ void fb_compat_println_error(const char* fmt, ...);
  * Text color code
  */
 const char* fb_text_color_code(uint8_t r, uint8_t g, uint8_t b);
-const char* fb_text_color_code2(struct color c);
+const char* fb_text_color_code2(const struct color* c);
+
+/* 
+ * Text outline color code
+ */
+const char* fb_text_outline_color_code(uint8_t r, uint8_t g, uint8_t b);
+const char* fb_text_outline_color_code2(const struct color* c);
 
 /*
  * Background color code
  * Specify 00, 00, 00 for transparent background
  */
 const char* fb_background_color_code(uint8_t r, uint8_t g, uint8_t b);
-const char* fb_background_color_code2(struct color c);
+const char* fb_background_color_code2(const struct color* c);
 
 /*
  * Clear framebuffer

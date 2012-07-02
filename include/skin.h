@@ -23,22 +23,48 @@
 #define SKIN_H
 
 /* Required font properties */
+struct font_data
+{
+	int font_height;
+	int font_width;
+	int font_outline;
+	int font_kerning;
+};
 
-#define FONT_HEIGHT            18
-#define FONT_WIDTH             10
+/* Default parameters for outlining */
+#define DEFAULT_FONT_OUTLINE             0
+#define DEFAULT_FONT_KERNING             0
 
-#define FIRST_CHAR             32
-#define NUM_CHARS              96
+/* Font data, maximum used in initial malloc */
+#define MAXIMUM_FONT_DATA_SIZE           0x80000
+
+#define FIRST_CHAR                       32
+#define NUM_CHARS                        96
 
 /* Images */
 
-#define CUSTOM_COLORS_ID       "CLRS"
-#define CUSTOM_COLORS_OFFSET   0x19FF00
+#define CUSTOM_COLORS_ID                 "CLRS"
+#define CUSTOM_COLORS_OFFSET             0x19FF00
 
-#define FONT_OFFSET            0x1A0000
-#define FONT_SIZE_LIMIT        0x5000
+#define FONT_OFFSET                      0x1A0000
+#define FONT_SIZE_LIMIT                  0x5000
 
-#define BOOTLOGO_OFFSET        0x1A5000
-#define BOOTLOGO_SIZE_LIMIT    0x32000
+#define BOOTLOGO_OFFSET                  0x1A5000
+#define BOOTLOGO_SIZE_LIMIT              0x32000
+
+inline int outlined_font_height(struct font_data* f) 
+{ 
+	return f->font_height + 2*f->font_outline; 
+}
+
+inline int outlined_font_width(struct font_data* f)  
+{
+	return f->font_width + 2*f->font_outline;
+}
+
+inline int font_data_size(struct font_data* f)
+{ 
+	return outlined_font_width(f) * outlined_font_height(f) * NUM_CHARS * sizeof(struct color); 
+}
 
 #endif //!SKIN_H

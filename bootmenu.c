@@ -31,14 +31,14 @@ const char* bootloader_id = "Skrilax_CZ's bootloader V9";
 /* Boot menu items */
 const char* boot_menu_items[] =
 {
-	"%s%sReboot",
-	"%s%sFastboot Mode",
-	"%s%sBoot Primary Kernel Image",
-	"%s%sBoot Secondary Kernel Image",
-	"%s%sBoot Recovery",
-	"%s%sSet Boot %s Kernel Image",
-	"%s%sSet Debug Mode %s",
-	"%s%sWipe Cache",
+	"Reboot",
+	"Fastboot Mode",
+	"Boot Primary Kernel Image",
+	"Boot Secondary Kernel Image",
+	"Boot Recovery",
+	"Set Boot %s Kernel Image",
+	"Set Debug Mode %s",
+	"Wipe Cache",
 };
 
 /* Device keys */
@@ -273,7 +273,7 @@ void bootmenu_basic_frame(void)
 void bootmenu_error(void)
 {
 	bootmenu_basic_frame();
-	fb_printf("%sUnrecoverable bootloader error, please reboot the device manually.", fb_text_color_code2(error_text_color));
+	fb_color_printf("Unrecoverable bootloader error, please reboot the device manually.", NULL, &error_text_color);
 	
 	while (1)
 		sleep(1000);
@@ -313,8 +313,8 @@ void main(void* global_handle, int boot_handle)
 	char line_builder[TEXT_LINE_CHARS + 8 + 1];
 	
 	int i, l;
-	const char* b;
-	const char* c;
+	struct color* b;
+	struct font_color* fc;
 	
 	error_message[0] = '\0';
 		
@@ -445,7 +445,7 @@ void main(void* global_handle, int boot_handle)
 		
 		/* Print error if we're stuck in bootmenu */
 		if (error_message[0] != '\0')
-			fb_printf("%s%s\n\n", fb_text_color_code2(error_text_color), error_message);
+			fb_color_printf("%s\n\n", NULL, &error_text_color, error_message);
 		else
 			fb_printf("\n");
 		
@@ -458,21 +458,21 @@ void main(void* global_handle, int boot_handle)
 			
 			if (i == selected_option)
 			{
-				b = fb_background_color_code2(highlight_color);
-				c = fb_text_color_code2(highlight_text_color);
+				b = &highlight_color;
+				fc = &highlight_text_color;
 			}
 			else
 			{
-				b = fb_background_color_code(0, 0, 0);
-				c = fb_text_color_code2(text_color);
+				b = NULL;
+				fc = &text_color;
 			}
 			
 			if (i == 5)
-				snprintf(line_builder, ARRAY_SIZE(line_builder), boot_menu_items[i], b, c, other_boot_partition_str);
+				snprintf(line_builder, ARRAY_SIZE(line_builder), boot_menu_items[i], other_boot_partition_str);
 			else if (i == 6)
-				snprintf(line_builder, ARRAY_SIZE(line_builder), boot_menu_items[i], b, c, other_debug_mode_str);
+				snprintf(line_builder, ARRAY_SIZE(line_builder), boot_menu_items[i], other_debug_mode_str);
 			else
-				snprintf(line_builder, ARRAY_SIZE(line_builder), boot_menu_items[i], b, c);
+				snprintf(line_builder, ARRAY_SIZE(line_builder), boot_menu_items[i]);
 			
 			l = strlen(line_builder);
 			if (l == ARRAY_SIZE(line_builder) - 1)
@@ -480,7 +480,7 @@ void main(void* global_handle, int boot_handle)
 			else if (l < ARRAY_SIZE(line_builder) - 1)
 				line_builder[l] = ' ';
 			
-			fb_printf(line_builder);
+			fb_color_printf(line_builder, b, fc);
 		}
 		
 		/* Draw framebuffer */

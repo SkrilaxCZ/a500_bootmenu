@@ -25,45 +25,85 @@
 #include <framebuffer.h>
 #include <jpeg.h>
 
-#define SCREEN_WIDTH        1280
-#define SCREEN_HEIGHT       800
+#define SCREEN_WIDTH            1280
+#define SCREEN_HEIGHT           800
 
-#define TITLE_LINES         2
-#define LINE_WIDTH          (TEXT_LINE_CHARS + 1)
-#define BUFFER_LINE_WIDTH   (LINE_WIDTH + 20)
-
-#define TITLE_Y_OFFSET      (FONT_HEIGHT)
-
-#define TEXT_Y_OFFSET       (4*FONT_HEIGHT)
-#define TEXT_X_OFFSET       ((SCREEN_WIDTH/2) - (FONT_WIDTH*(TEXT_LINE_CHARS/2)))
+#define TITLE_LINES             2
+#define LINE_WIDTH              (TEXT_LINE_CHARS + 1)
+#define BUFFER_LINE_WIDTH       (LINE_WIDTH + 20)
 
 #include <skin.h>
 
-/* Title color */
-struct color title_color =
+/* Font data */
+struct font_data font = 
 {
-	.R = 0xFF,
-	.G = 0xFF,
-	.B = 0xFF,
-	.X = 0x00,
+	.font_height = -1,
+	.font_width = -1,
+	.font_outline = DEFAULT_FONT_OUTLINE,
+	.font_kerning = DEFAULT_FONT_KERNING,
+};
+
+/* Text offsets */
+#define TITLE_Y_OFFSET          (outlined_font_height(&font))
+
+#define TEXT_Y_OFFSET           (4*outlined_font_height(&font))
+#define TEXT_X_OFFSET           ((SCREEN_WIDTH/2) - ((outlined_font_width(&font) + font.font_kerning) * (TEXT_LINE_CHARS/2)))
+
+/* Title color */
+struct font_color title_color =
+{
+	.color = 
+	{
+		.R = 0xFF,
+		.G = 0xFF,
+		.B = 0xFF,
+		.X = 0x00,
+	},
+	.outline = 
+	{
+		.R = 0x00,
+		.G = 0x00,
+		.B = 0x00,
+		.X = 0x00,
+	}
 };
 
 /* Text color */
-struct color text_color =
+struct font_color text_color =
 {
-	.R = 0xFF,
-	.G = 0xFF,
-	.B = 0xFF,
-	.X = 0x00,
+	.color = 
+	{
+		.R = 0xFF,
+		.G = 0xFF,
+		.B = 0xFF,
+		.X = 0x00,
+	},
+	.outline = 
+	{
+		.R = 0x00,
+		.G = 0x00,
+		.B = 0x00,
+		.X = 0x00,
+	}
 };
 
 /* Error text color */
-struct color error_text_color =
+struct font_color error_text_color =
 {
-	.R = 0xFF,
-	.G = 0xFF,
-	.B = 0x00,
-	.X = 0x00,
+	.color = 
+	{
+		.R = 0xFF,
+		.G = 0xFF,
+		.B = 0x00,
+		.X = 0x00,
+	},
+	.outline = 
+	{
+		.R = 0x00,
+		.G = 0x00,
+		.B = 0x00,
+		.X = 0x00,
+	}
 };
 
 /* Highlighting color */
@@ -76,12 +116,22 @@ struct color highlight_color =
 };
 
 /* Highlighted text color */
-struct color highlight_text_color =
+struct font_color highlight_text_color =
 {
-	.R = 0x3F,
-	.G = 0x3F,
-	.B = 0x3F,
-	.X = 0x00,
+	.color = 
+	{
+		.R = 0x3F,
+		.G = 0x3F,
+		.B = 0x3F,
+		.X = 0x00,
+	},
+	.outline = 
+	{
+		.R = 0xFF,
+		.G = 0xFF,
+		.B = 0xFF,
+		.X = 0x00,
+	}
 };
 
 /* Framebuffer data */
@@ -95,6 +145,9 @@ uint8_t* background;
 
 /* Font data */
 uint8_t* font_data;
+
+/* Font Outline data */
+uint8_t* font_outline_data;
 
 /* Title */
 char title[BUFFER_LINE_WIDTH];
@@ -142,19 +195,19 @@ static void fb_error(const char* msg)
 /* 
  * Draw text on location
  */
-static void fb_draw_string(uint32_t x, uint32_t y, const char* s, struct color* b, struct color* c)
+static void fb_draw_string(uint32_t x, uint32_t y, const char* s, struct color* b, struct color* c, struct color* o)
 {
 	char off;
 	int cc, bkg;
 	uint32_t i, j, pixel;
-	uint16_t p;
+	uint16_t p, op;
 	struct color* changing;
 	
 	if (font_data == NULL)
 		return;
 	
 	/* Check if we're in the screen */
-	if (y + FONT_HEIGHT >= SCREEN_HEIGHT)
+	if (y + outlined_font_height(&font) >= SCREEN_HEIGHT)
 		return;
 	
 	bkg = ((b->R) || (b->G) || (b->B));
@@ -162,7 +215,7 @@ static void fb_draw_string(uint32_t x, uint32_t y, const char* s, struct color* 
 	while ((off = *s++))
 	{
 		/* Out of bounds */
-		if (x + FONT_WIDTH >= SCREEN_WIDTH)
+		if (x + outlined_font_width(&font) >= SCREEN_WIDTH)
 			return;
 		
 		/* Check color code */
@@ -171,6 +224,11 @@ static void fb_draw_string(uint32_t x, uint32_t y, const char* s, struct color* 
 		if (off == 0x1B)
 		{
 			changing = c;
+			cc = 1;
+		}
+		else if (off == 0x2B)
+		{
+			changing = o;
 			cc = 1;
 		}
 		else if (off == 0x1C)
@@ -221,33 +279,46 @@ static void fb_draw_string(uint32_t x, uint32_t y, const char* s, struct color* 
 		if (off < 0 || off >= NUM_CHARS)
 			continue;
 		
-		for (i = 0; i < FONT_HEIGHT; i++)
+		if (bkg)
 		{
-			for (j = 0; j < FONT_WIDTH; j++)
+			for (i = 0; i < outlined_font_height(&font); i++)
 			{
-				/* Get the pixel in font */
-				p = font_data[(i * NUM_CHARS * FONT_WIDTH) + (off * FONT_WIDTH) + j];
-				
-				/* Get the pixel in the frame */
-				pixel = sizeof(struct color) * ((y + i) * SCREEN_WIDTH + (x + j));
-				
-				if (bkg)
+				for (j = 0; j < outlined_font_width(&font); j++)
 				{
+					/* Get the pixel in font */
+					p = font_data[(i * NUM_CHARS * outlined_font_width(&font)) + (off * outlined_font_width(&font)) + j];
+					
+					/* Get the pixel in the frame */
+					pixel = sizeof(struct color) * ((y + i) * SCREEN_WIDTH + (x + j));
+					
 					builder[pixel  ] = (uint8_t)(((b->R * (255 - p)) + (c->R * p)) / 255);
 					builder[pixel+1] = (uint8_t)(((b->G * (255 - p)) + (c->G * p)) / 255);
 					builder[pixel+2] = (uint8_t)(((b->B * (255 - p)) + (c->B * p)) / 255);
 				}
-				else
-				{
-					builder[pixel  ] = (uint8_t)(((builder[pixel  ] * (255 - p)) + (c->R * p)) / 255);
-					builder[pixel+1] = (uint8_t)(((builder[pixel+1] * (255 - p)) + (c->G * p)) / 255);
-					builder[pixel+2] = (uint8_t)(((builder[pixel+2] * (255 - p)) + (c->B * p)) / 255);
-				}
-				
 			}
 		}
+		else if (off)
+		{
+			for (i = 0; i < outlined_font_height(&font); i++)
+			{
+				for (j = 0; j < outlined_font_width(&font); j++)
+				{
+					/* Get the pixel in font */
+					pixel = (i * NUM_CHARS * outlined_font_width(&font)) + (off * outlined_font_width(&font)) + j;
+					p = font_data[pixel];
+					op = font_outline_data[pixel];
+					
+					/* Get the pixel in the frame */
+					pixel = sizeof(struct color) * ((y + i) * SCREEN_WIDTH + (x + j));
+					
+					builder[pixel  ] = (uint8_t)(((builder[pixel  ] * (255 - p - op)) + (c->R * p) + (o->R * op)) / 255);
+					builder[pixel+1] = (uint8_t)(((builder[pixel+1] * (255 - p - op)) + (c->G * p) + (o->G * op)) / 255);
+					builder[pixel+2] = (uint8_t)(((builder[pixel+2] * (255 - p - op)) + (c->B * p) + (o->B * op)) / 255);
+				}
+			}	
+		}
 		
-		x += FONT_WIDTH;
+		x += outlined_font_width(&font) + font.font_kerning;
 	}
 }
 
@@ -256,41 +327,81 @@ static void fb_draw_string(uint32_t x, uint32_t y, const char* s, struct color* 
  */
 void fb_init()
 {
-	const uint8_t *in, *cdata;
-	uint8_t *out, *jpg_out_data;
+	uint8_t *jpg_out_data, gray;
 	int font_size;
 	int jpg_height, jpg_width, jpg_image_size; 
-	int i;
-	uint32_t gray;
+	int off, i, j, pixel, outline_i, outline_j;
 	
 	/* Init framebuffer */
 	framebuffer = *framebuffer_ptr;
 	framebuffer_size = *framebuffer_size_ptr;
 	
 	/* Init font */
-	font_size = FONT_WIDTH * FONT_HEIGHT * NUM_CHARS;
-	jpg_out_data = malloc(font_size * sizeof(struct color));
+	jpg_out_data = malloc(MAXIMUM_FONT_DATA_SIZE);
 	
 	if (jpg_out_data != NULL)
 	{
 		/* The font is in RGB format */
-		if (!jpeg_load_rgbx(jpg_out_data, font_size * sizeof(struct color), &jpg_width, &jpg_height, 
+		if (!jpeg_load_rgbx(jpg_out_data, MAXIMUM_FONT_DATA_SIZE, &jpg_width, &jpg_height, 
 		                    &jpg_image_size, (const uint8_t*) FONT_OFFSET, FONT_SIZE_LIMIT))
 		{
+			font.font_height = jpg_height;
+			font.font_width = jpg_width / NUM_CHARS;
+			
+			font_size = font_data_size(&font);
+			
 			font_data = malloc(font_size);
-			
-			if ((jpg_width != FONT_WIDTH * NUM_CHARS) || (jpg_height != FONT_HEIGHT))
-				fb_error("Font jpg image size is not valid (must be 960x80).");
-			
-			/* Convert it to grayscale and store it */
-			in = jpg_out_data;
-			out = font_data;
-			
+			font_outline_data = malloc(font_size);
+						
+			/* Clear font and outline data */
+
 			for (i = 0; i < font_size; i++)
 			{
-				gray = 299*in[0] + 587*in[1] + 114*in[2];
-				out[i] = (char)(gray / 1000);
-				in += 4;
+				font_data[i] = 0;
+				font_outline_data[i] = 0;
+			}
+
+			/* Convert it to grayscale and store it */
+
+			for (off = 0; off < NUM_CHARS; off++)
+			{
+				for (i = 0; i < font.font_height; i++)
+				{
+					for (j = 0; j < font.font_width; j++)
+					{
+						/* Load pixel from JPG */
+						pixel = ((i * NUM_CHARS * font.font_width) + (off * font.font_width) + j) * sizeof(struct color);
+						gray = (char)((299*jpg_out_data[pixel] + 587*jpg_out_data[pixel+1] + 114*jpg_out_data[pixel+2]) / 1000);
+						
+						/* Save pixel to font_data */
+						pixel = ((i + font.font_outline) * NUM_CHARS * outlined_font_width(&font)) + (off * outlined_font_width(&font)) + j + font.font_outline;
+						font_data[pixel] = gray;
+						
+						/* Outlining */
+						if (font.font_outline)
+						{
+							for (outline_i = i; outline_i <= i + font.font_outline * 2; outline_i++)
+							{
+								for (outline_j = j; outline_j <= j + font.font_outline * 2; outline_j++)
+								{
+									pixel = (outline_i * NUM_CHARS * outlined_font_width(&font)) + (off * outlined_font_width(&font)) + outline_j;
+									if (gray > font_outline_data[pixel])
+										font_outline_data[pixel] = gray;
+								}
+							}
+						}
+					}
+				}
+			}
+
+			/* Normalize outline data */
+			if (font.font_outline)
+			{
+				for (i = 0; i < font_size; i++)
+				{
+					if (font_data[i] + font_outline_data[i] > 255)
+						font_outline_data[i] = 255 - font_data[i];
+				}
 			}
 		}
 		else
@@ -324,6 +435,9 @@ void fb_init()
 		}
 		
 	}
+	
+	/* SUSPENDED UNTIL FINAL VERSION IS MADE */
+#if 0
 	
 	/* Init colors */
 	cdata = (const uint8_t*)(CUSTOM_COLORS_OFFSET);
@@ -363,6 +477,7 @@ void fb_init()
 		highlight_text_color.B = *cdata++;
 		highlight_text_color.X = *cdata++;
 	}
+#endif
 	
 	text_cur_x = 0;
 	text_cur_y = 0;
@@ -460,6 +575,22 @@ void fb_printf(const char* fmt, ...)
 	text[text_cur_y][text_cur_x] = '\0';
 }
 
+void fb_color_printf(const char* fmt, const struct color* bkg, const struct font_color* clr, ...)
+{
+	char buffer[256];
+	
+	va_list args;
+	va_start(args, clr);
+	vsnprintf(buffer, ARRAY_SIZE(buffer), fmt, args);
+	va_end(args);
+	
+	fb_printf("%s%s%s%s",
+	          fb_background_color_code2(bkg),
+	          fb_text_color_code2(&clr->color),
+	          fb_text_outline_color_code2(&clr->outline),
+	          buffer); 
+}
+
 /*
  * Compatibility functions
  */
@@ -474,7 +605,7 @@ void fb_compat_println(const char* fmt, ...)
 	va_end(args);
 	
 	/* Send it */
-	fb_printf("%s%s\n", fb_text_color_code2(text_color), buffer);
+	fb_color_printf("%s\n", NULL, &text_color, buffer);
 	fb_refresh();
 }
 
@@ -489,7 +620,7 @@ void fb_compat_println_error(const char* fmt, ...)
 	va_end(args);
 	
 	/* Send it */
-	fb_printf("%s%s\n", fb_text_color_code2(error_text_color), buffer);
+	fb_color_printf("%s\n", NULL, &error_text_color, buffer);
 	fb_refresh();
 }
 
@@ -509,19 +640,52 @@ const char* fb_text_color_code(uint8_t r, uint8_t g, uint8_t b)
 	return text_color_buf;
 }
 
-const char* fb_text_color_code2(struct color c)
+const char* fb_text_color_code2(const struct color* c)
 {
+	if (!c)
+		return "";
+	
 	text_color_buf[0] = (char)0x1B;
-	text_color_buf[1] = (char)(c.R ? c.R : 0x01);
-	text_color_buf[2] = (char)(c.G ? c.G : 0x01);
-	text_color_buf[3] = (char)(c.B ? c.B : 0x01);
+	text_color_buf[1] = (char)(c->R ? c->R : 0x01);
+	text_color_buf[2] = (char)(c->G ? c->G : 0x01);
+	text_color_buf[3] = (char)(c->B ? c->B : 0x01);
 	text_color_buf[4] = '\0';
 	
 	return text_color_buf;
 }
 
 /*
- * Text color code
+ * Text outline color code
+ */
+static char text_outline_color_buf[5];
+
+const char* fb_text_outline_color_code(uint8_t r, uint8_t g, uint8_t b)
+{
+	text_outline_color_buf[0] = (char)0x2B;
+	text_outline_color_buf[1] = (char)(r ? r : 0x01);
+	text_outline_color_buf[2] = (char)(g ? g : 0x01);
+	text_outline_color_buf[3] = (char)(b ? b : 0x01);
+	text_outline_color_buf[4] = '\0';
+	
+	return text_outline_color_buf;
+}
+
+const char* fb_text_outline_color_code2(const struct color* c)
+{
+	if (!c)
+		return "";
+	
+	text_outline_color_buf[0] = (char)0x2B;
+	text_outline_color_buf[1] = (char)(c->R ? c->R : 0x01);
+	text_outline_color_buf[2] = (char)(c->G ? c->G : 0x01);
+	text_outline_color_buf[3] = (char)(c->B ? c->B : 0x01);
+	text_outline_color_buf[4] = '\0';
+	
+	return text_outline_color_buf;
+}
+
+/*
+ * Background color code
  */
 static char background_color_buf[5];
 
@@ -544,14 +708,14 @@ const char* fb_background_color_code(uint8_t r, uint8_t g, uint8_t b)
 	return background_color_buf;
 }
 
-const char* fb_background_color_code2(struct color c)
+const char* fb_background_color_code2(const struct color* c)
 {
-	if (c.R || c.G || c.B)
+	if (c && (c->R || c->G || c->B))
 	{
 		background_color_buf[0] = (char)0x1C;
-		background_color_buf[1] = (char)(c.R ? c.R : 0x01);
-		background_color_buf[2] = (char)(c.G ? c.G : 0x01);
-		background_color_buf[3] = (char)(c.B ? c.B : 0x01);
+		background_color_buf[1] = (char)(c->R ? c->R : 0x01);
+		background_color_buf[2] = (char)(c->G ? c->G : 0x01);
+		background_color_buf[3] = (char)(c->B ? c->B : 0x01);
 		background_color_buf[4] = '\0';
 	}
 	else
@@ -583,6 +747,7 @@ void fb_refresh()
 	int i, l;
 	struct color b;
 	struct color c;
+	struct color o;
 		
 	/* Clear framebuffer */
 	if (background != NULL)
@@ -591,30 +756,33 @@ void fb_refresh()
 		memset(builder, 0x00, SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(struct color));
 		
 	/* Draw title */
-	c = title_color;
+	c = title_color.color;
+	o = title_color.outline;
 	b.R = 0;
 	b.G = 0;
 	b.B = 0;
 	
 	l = strlen(title);
-	fb_draw_string((SCREEN_WIDTH/2) - (l*FONT_WIDTH/2), TITLE_Y_OFFSET, title, &b, &c);
+	fb_draw_string((SCREEN_WIDTH/2) - (l*(outlined_font_width(&font) + font.font_kerning)/2), TITLE_Y_OFFSET, title, &b, &c, &o);
 	
-	c = title_color;
+	c = title_color.color;
+	o = title_color.outline;
 	b.R = 0;
 	b.G = 0;
 	b.B = 0;
 	
 	l = strlen(status);
-	fb_draw_string((SCREEN_WIDTH/2) - (l*FONT_WIDTH/2), TITLE_Y_OFFSET + FONT_HEIGHT, status, &b, &c);
+	fb_draw_string((SCREEN_WIDTH/2) - (l*(outlined_font_width(&font) + font.font_kerning)/2), TITLE_Y_OFFSET + outlined_font_height(&font), status, &b, &c, &o);
 	
 	/* Draw text */
-	c = text_color;
+	c = text_color.color;
+	o = text_color.outline;
 	b.R = 0;
 	b.G = 0;
 	b.B = 0;
 	
 	for (i = 0; i <= text_cur_y && i < TEXT_LINES; i++)
-		fb_draw_string(TEXT_X_OFFSET, TEXT_Y_OFFSET + i * FONT_HEIGHT, text[i], &b, &c);
+		fb_draw_string(TEXT_X_OFFSET, TEXT_Y_OFFSET + i * outlined_font_height(&font), text[i], &b, &c, &o);
 		
 	/* Push and refresh framebuffer */
 	memcpy(framebuffer, builder, SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(struct color));

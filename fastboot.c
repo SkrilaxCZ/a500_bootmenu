@@ -993,7 +993,7 @@ error:
 		snprintf(reply_buffer, ARRAY_SIZE(reply_buffer), FASTBOOT_RESP_FAIL "(%08x)", fastboot_status);
 		fastboot_send(fastboot_handle, reply_buffer, strlen(reply_buffer));
 		
-		fb_printf("%sERROR: Failed to process command %s.\nError(0x%x)\n", fb_text_color_code2(error_text_color), cmd_buffer, fastboot_status);
+		fb_color_printf("ERROR: Failed to process command %s.\nError(0x%x)\n", NULL, &error_text_color, cmd_buffer, fastboot_status);
 		fb_refresh();
 		
 		/* Unload fastboot handle */
