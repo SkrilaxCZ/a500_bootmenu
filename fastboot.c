@@ -517,6 +517,10 @@ struct fastboot_partition_id fastboot_partitions[] =
 		.partition_id = "FLX",
 	},
 	{
+		.fastboot_id = "linux",
+		.partition_id = "UBN",
+	},
+	{
 		.fastboot_id = "secboot",
 		.partition_id = "AKB",
 	},
