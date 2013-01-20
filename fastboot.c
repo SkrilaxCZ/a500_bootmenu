@@ -62,7 +62,7 @@ struct fastboot_get_var_list_item
 	fastboot_get_var_handler var_handler;
 };
 
-typedef int(*fastboot_oem_cmd_handler)(int fastboot_handle);
+typedef int(*fastboot_oem_cmd_handler)(int fastboot_handle, const char* args);
 
 struct fastboot_oem_cmd_list_item
 {
@@ -302,7 +302,7 @@ struct fastboot_get_var_list_item fastboot_variable_table[] =
  */
 
 /* SBK */
-int fastboot_oem_cmd_sbk(int fastboot_handle)
+int fastboot_oem_cmd_sbk(int fastboot_handle, const char* args)
 {
 	int fastboot_status;
 	uint32_t serial_no[2];
@@ -380,60 +380,69 @@ int fastboot_oem_cmd_sbk(int fastboot_handle)
 	return fastboot_status_ok(fastboot_status) == 0;
 }
 
-/* Debug ON */
-int fastboot_oem_cmd_debug_on(int fastboot_handle)
+/* Debug ON/OFF */
+int fastboot_oem_cmd_debugmode(int fastboot_handle, const char* args)
 {
 	int fastboot_status;
-	const char* info_reply = FASTBOOT_RESP_INFO "Debug set to ON";
+	const char* info_reply_on = FASTBOOT_RESP_INFO "Debug set to ON";
+	const char* info_reply_off = FASTBOOT_RESP_INFO "Debug set to OFF";
+	const char* info_reply_bad = FASTBOOT_RESP_INFO "Invalid debug mode";
+	const char* reply;
 	
-	msc_cmd.debug_mode = 1;
-	msc_cmd_write();
+	if (!strncmp(args, "on", strlen("on")))
+	{
+		msc_cmd.debug_mode = 1;
+		msc_cmd_write();
+		
+		reply = info_reply_on;
+	}
+	else if (!strncmp(args, "off", strlen("off")))
+	{
+		msc_cmd.debug_mode = 0;
+		msc_cmd_write();
+		
+		reply = info_reply_off;
+	}
+	else
+		reply = info_reply_bad;
 	
-	fastboot_status = fastboot_send(fastboot_handle, info_reply, strlen(info_reply));
-	return fastboot_status_ok(fastboot_status) == 0;
-}
-
-/* Debug OFF */
-int fastboot_oem_cmd_debug_off(int fastboot_handle)
-{
-	int fastboot_status;
-	const char* info_reply = FASTBOOT_RESP_INFO "Debug set to OFF";
-
-	msc_cmd.debug_mode = 0;
-	msc_cmd_write();
-	
-	fastboot_status = fastboot_send(fastboot_handle, info_reply, strlen(info_reply));
+	fastboot_status = fastboot_send(fastboot_handle, reply, strlen(reply));
 	return fastboot_status_ok(fastboot_status) == 0;
 }
 
 /* Set primary boot partition */
-int fastboot_oem_cmd_setboot_primary(int fastboot_handle)
+int fastboot_oem_cmd_setboot(int fastboot_handle, const char* args)
 {
 	int fastboot_status;
-	const char* info_reply = FASTBOOT_RESP_INFO "Set to boot primary kernel image.";
+	const char* info_reply_b1 = FASTBOOT_RESP_INFO "Set to boot primary kernel image.";
+	const char* info_reply_b2 = FASTBOOT_RESP_INFO "Set to boot secondary kernel image.";
+	const char* info_reply_bad = FASTBOOT_RESP_INFO "Invalid boot kernel image";
+	const char* reply;
 	
-	msc_cmd.boot_partition = 0;
-	msc_cmd_write();
+	if (!strncmp(args, "b1", strlen("b1")))
+	{
+		msc_cmd.boot_partition = 0;
+		msc_cmd_write();
+		
+		reply = info_reply_b1;
+	}
+	else if (!strncmp(args, "b2", strlen("b2")))
+	{
+		msc_cmd.boot_partition = 1;
+		msc_cmd_write();
+		
+		reply = info_reply_b2;
+	}
+	else
+		reply = info_reply_bad;
 	
-	fastboot_status = fastboot_send(fastboot_handle, info_reply, strlen(info_reply));
+	
+	fastboot_status = fastboot_send(fastboot_handle, reply, strlen(reply));
 	return fastboot_status_ok(fastboot_status) == 0;
 }
 
-/* Set secondary boot partition */
-int fastboot_oem_cmd_setboot_secondary(int fastboot_handle)
-{
-	int fastboot_status;
-	const char* info_reply = FASTBOOT_RESP_INFO "Set to boot secondary kernel image.";
-	
-	msc_cmd.boot_partition = 1;
-	msc_cmd_write();
-	
-	fastboot_status = fastboot_send(fastboot_handle, info_reply, strlen(info_reply));
-	return fastboot_status_ok(fastboot_status) == 0;
-}
-
-/* Lock */
-int fastboot_oem_cmd_oem_lock(int fastboot_handle)
+/* Lock (cough cough) */
+int fastboot_oem_cmd_oem_lock(int fastboot_handle, const char* args)
 {
 	int fastboot_status;
 	const char* info_reply = FASTBOOT_RESP_INFO "Seriously, are you kidding me?"; /* Tsk :D */
@@ -443,7 +452,7 @@ int fastboot_oem_cmd_oem_lock(int fastboot_handle)
 }
 
 /* Unlock */
-int fastboot_oem_cmd_oem_unlock(int fastboot_handle)
+int fastboot_oem_cmd_oem_unlock(int fastboot_handle, const char* args)
 {
 	int fastboot_status;
 	const char* info_reply = FASTBOOT_RESP_INFO "Already unlocked.";
@@ -451,6 +460,74 @@ int fastboot_oem_cmd_oem_unlock(int fastboot_handle)
 	fastboot_status = fastboot_send(fastboot_handle, info_reply, strlen(info_reply));
 	return fastboot_status_ok(fastboot_status) == 0;
 }
+
+/* Some debugging functions */
+#ifdef FASTBOOT_BOOTLOADER_DEBUG
+
+/* Get */
+int fastboot_oem_cmd_oem_bldebug_get(int fastboot_handle, const char* args)
+{
+	int fastboot_status;
+	long int address;
+	unsigned int value;
+	char reply[0x100];
+	
+	if (!strncmp(args, "0x", strlen("0x")) || !strncmp(args, "0X", strlen("0X")))
+		args += 2;
+
+	address = strtol(args, NULL, 16);
+	
+	if (address < 0)
+		snprintf(reply, ARRAY_SIZE(reply), FASTBOOT_RESP_INFO "Illegal address %d!", (int) address);
+	else
+	{
+		value = *((unsigned int*)address);
+		snprintf(reply, ARRAY_SIZE(reply), FASTBOOT_RESP_INFO "0x%X = 0x%X", (unsigned int) address, value);
+	}
+	
+	fastboot_status = fastboot_send(fastboot_handle, reply, strlen(reply));
+	return fastboot_status_ok(fastboot_status) == 0;
+}
+
+/* Set */
+int fastboot_oem_cmd_oem_bldebug_set(int fastboot_handle, const char* args)
+{
+	int fastboot_status;
+	long int address, value;
+	char reply[0x100];
+	char* endp;
+	
+	if (!strncmp(args, "0x", strlen("0x")) || !strncmp(args, "0X", strlen("0X")))
+		args += 2;
+		
+	address = strtol(args, &endp, 16);
+
+	if (address < 0)
+		snprintf(reply, ARRAY_SIZE(reply), FASTBOOT_RESP_INFO "Illegal address %d!", (int) address);
+	else
+	{
+		while (*endp == ' ')
+			endp++;
+		
+		if (*endp == '\0')
+			snprintf(reply, ARRAY_SIZE(reply), FASTBOOT_RESP_INFO "Missing value!");
+		else
+		{
+			if (!strncmp(endp, "0x", strlen("0x")) || !strncmp(endp, "0X", strlen("0X")))
+				endp += 2;
+			
+			value = strtol(endp, NULL, 16);
+		
+			*((unsigned int*)address) = (unsigned int) value;
+			snprintf(reply, ARRAY_SIZE(reply), FASTBOOT_RESP_INFO "0x%X = 0x%X", (unsigned int) address, (unsigned int) value);
+		}
+	}
+
+	fastboot_status = fastboot_send(fastboot_handle, reply, strlen(reply));
+	return fastboot_status_ok(fastboot_status) == 0;
+}
+
+#endif
 
 /* List of fastboot oem commands */
 struct fastboot_oem_cmd_list_item fastboot_oem_command_table[] = 
@@ -460,20 +537,12 @@ struct fastboot_oem_cmd_list_item fastboot_oem_command_table[] =
 		.cmd_handler = &fastboot_oem_cmd_sbk,
 	},
 	{
-		.cmd_name = "debug on",
-		.cmd_handler = &fastboot_oem_cmd_debug_on,
+		.cmd_name = "debug",
+		.cmd_handler = &fastboot_oem_cmd_debugmode,
 	},
 	{
-		.cmd_name = "debug off",
-		.cmd_handler = &fastboot_oem_cmd_debug_off,
-	},
-	{
-		.cmd_name = "setboot b1",
-		.cmd_handler = &fastboot_oem_cmd_setboot_primary,
-	},
-	{
-		.cmd_name = "setboot b2",
-		.cmd_handler = &fastboot_oem_cmd_setboot_secondary,
+		.cmd_name = "setboot",
+		.cmd_handler = &fastboot_oem_cmd_setboot,
 	},
 	{
 		.cmd_name = "lock",
@@ -483,6 +552,16 @@ struct fastboot_oem_cmd_list_item fastboot_oem_command_table[] =
 		.cmd_name = "unlock",
 		.cmd_handler = &fastboot_oem_cmd_oem_unlock,
 	},
+#ifdef FASTBOOT_BOOTLOADER_DEBUG
+	{
+		.cmd_name = "bldebug get",
+		.cmd_handler = &fastboot_oem_cmd_oem_bldebug_get,
+	},
+	{
+		.cmd_name = "bldebug set",
+		.cmd_handler = &fastboot_oem_cmd_oem_bldebug_set,
+	},
+#endif
 };
 
 /* ===========================================================================
@@ -560,6 +639,7 @@ void fastboot_main(void* global_handle, int boot_handle, char* error_msg, int er
 	uint64_t partition_size;
 	int fastboot_status, cmd_status;
 	int pt_handle, bootloader_flash;
+	int cmdlen, mycmdlen;
 	int i;
 	
 	/* Unindetified initialization functions */
@@ -917,12 +997,25 @@ void fastboot_main(void* global_handle, int boot_handle, char* error_msg, int er
 				cmd_pointer = cmd_buffer + strlen(FASTBOOT_CMD_OEM);
 				cmd_status = 1;
 				
+				mycmdlen = strlen(cmd_pointer);
+				
 				for (i = 0; i < ARRAY_SIZE(fastboot_oem_command_table); i++)
 				{
-					if (!strncmp(cmd_pointer, fastboot_oem_command_table[i].cmd_name, strlen(fastboot_oem_command_table[i].cmd_name)))
+					cmdlen = strlen(fastboot_oem_command_table[i].cmd_name);
+					
+					if (!strncmp(cmd_pointer, fastboot_oem_command_table[i].cmd_name, cmdlen))
 					{
-						cmd_status = fastboot_oem_command_table[i].cmd_handler(fastboot_handle);
-						break;
+						/* Make sure it's a match */
+						if (mycmdlen == cmdlen)
+						{
+							cmd_status = fastboot_oem_command_table[i].cmd_handler(fastboot_handle, "");
+							break;
+						}
+						else if (mycmdlen > cmdlen && cmd_pointer[cmdlen] == ' ')
+						{
+							cmd_status = fastboot_oem_command_table[i].cmd_handler(fastboot_handle, cmd_pointer + cmdlen + 1);
+							break;
+						}
 					}
 				}
 
