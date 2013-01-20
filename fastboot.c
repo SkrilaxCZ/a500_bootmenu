@@ -78,6 +78,7 @@ struct fastboot_partition_id
 
 /* This is taken from the BL, which reacts positively on return value 0 and 5 */
 inline int fastboot_status_ok(int status) { return status == 0 || status == 5; }
+inline int fastboot_cmd_status(int status) { return status != 0 && status != 5; }
 
 /* ===========================================================================
  * Fastboot Get Var
@@ -318,7 +319,7 @@ int fastboot_oem_cmd_sbk(int fastboot_handle, const char* args)
 	if (serial_no[0] == 0 && serial_no[1] == 0)
 	{
 		fastboot_status = fastboot_send(fastboot_handle, bad_serial_reply, strlen(bad_serial_reply));
-		return fastboot_status_ok(fastboot_status) == 0;
+		return fastboot_cmd_status(fastboot_status);
 	}
 	
 	/* Calculate SBK */
@@ -377,7 +378,7 @@ int fastboot_oem_cmd_sbk(int fastboot_handle, const char* args)
 	fb_clear();
 	fb_refresh();
 	
-	return fastboot_status_ok(fastboot_status) == 0;
+	return fastboot_cmd_status(fastboot_status);
 }
 
 /* Debug ON/OFF */
@@ -407,7 +408,7 @@ int fastboot_oem_cmd_debugmode(int fastboot_handle, const char* args)
 		reply = info_reply_bad;
 	
 	fastboot_status = fastboot_send(fastboot_handle, reply, strlen(reply));
-	return fastboot_status_ok(fastboot_status) == 0;
+	return fastboot_cmd_status(fastboot_status);
 }
 
 /* Set primary boot partition */
@@ -438,7 +439,7 @@ int fastboot_oem_cmd_setboot(int fastboot_handle, const char* args)
 	
 	
 	fastboot_status = fastboot_send(fastboot_handle, reply, strlen(reply));
-	return fastboot_status_ok(fastboot_status) == 0;
+	return fastboot_cmd_status(fastboot_status);
 }
 
 /* Lock (cough cough) */
@@ -448,7 +449,7 @@ int fastboot_oem_cmd_oem_lock(int fastboot_handle, const char* args)
 	const char* info_reply = FASTBOOT_RESP_INFO "Seriously, are you kidding me?"; /* Tsk :D */
 
 	fastboot_status = fastboot_send(fastboot_handle, info_reply, strlen(info_reply));
-	return fastboot_status_ok(fastboot_status) == 0;
+	return fastboot_cmd_status(fastboot_status);
 }
 
 /* Unlock */
@@ -458,11 +459,134 @@ int fastboot_oem_cmd_oem_unlock(int fastboot_handle, const char* args)
 	const char* info_reply = FASTBOOT_RESP_INFO "Already unlocked.";
 	
 	fastboot_status = fastboot_send(fastboot_handle, info_reply, strlen(info_reply));
-	return fastboot_status_ok(fastboot_status) == 0;
+	return fastboot_cmd_status(fastboot_status);
 }
 
 /* Some debugging functions */
 #ifdef FASTBOOT_BOOTLOADER_DEBUG
+
+/* Dump */
+int fastboot_oem_cmd_oem_bldebug_dump(int fastboot_handle, const char* args)
+{
+	int fastboot_status, size, rem;
+	long int address, length;
+	unsigned int ilength, value, i, c;
+	unsigned int* paddress;
+	char reply[0x100];
+	char* reply_ptr;
+	char* endp;
+	const char* header_a = FASTBOOT_RESP_INFO "            00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f";
+	const char* header_b = FASTBOOT_RESP_INFO " --------   -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --";
+	
+	if (!strncmp(args, "0x", strlen("0x")) || !strncmp(args, "0X", strlen("0X")))
+		args += 2;
+		
+	address = strtol(args, &endp, 16);
+
+	if (address < 0)
+		snprintf(reply, ARRAY_SIZE(reply), FASTBOOT_RESP_INFO "Illegal address %d!", (int) address);
+	else if (address % 4)
+		snprintf(reply, ARRAY_SIZE(reply), FASTBOOT_RESP_INFO "Illegal address 0x%08X - unaligned access!", (int) address);
+	else
+	{
+		while (*endp == ' ')
+			endp++;
+		
+		if (*endp == '\0')
+			snprintf(reply, ARRAY_SIZE(reply), FASTBOOT_RESP_INFO "Missing length!");
+		else
+		{
+			if (!strncmp(endp, "0x", strlen("0x")) || !strncmp(endp, "0X", strlen("0X")))
+				endp += 2;
+			
+			length = strtol(endp, NULL, 16);
+			
+			paddress = (unsigned int*) address;
+			ilength = ((unsigned int) length);
+			
+			if (ilength % 4)
+				ilength = (ilength >> 2) + 1;
+			else
+				ilength >>= 2;
+			
+			i = 0;
+			c = 0;
+			rem = 0x100;
+			reply_ptr = reply;
+			
+			snprintf(reply_ptr, rem, FASTBOOT_RESP_INFO " %08X  ", (unsigned int)paddress);
+			size = strlen(reply_ptr);
+			rem -= size;
+			reply_ptr += size;
+			
+			fastboot_status = fastboot_send(fastboot_handle, header_a, strlen(header_a));
+			if (fastboot_cmd_status(fastboot_status))
+				return 1;
+				
+			fastboot_status = fastboot_send(fastboot_handle, header_b, strlen(header_b));
+			if (fastboot_cmd_status(fastboot_status))
+				return 1;
+				
+			while (i < ilength)
+			{
+				/* little endian */
+				value = *paddress;
+				paddress++;
+				
+				snprintf(reply_ptr, rem, " %02X", value & 0xFF);
+				size = strlen(reply_ptr);
+				rem -= size;
+				reply_ptr += size;
+				
+				snprintf(reply_ptr, rem, " %02X", (value >> 8) & 0xFF);
+				size = strlen(reply_ptr);
+				rem -= size;
+				reply_ptr += size;
+				
+				snprintf(reply_ptr, rem, " %02X", (value >> 16) & 0xFF);
+				size = strlen(reply_ptr);
+				rem -= size;
+				reply_ptr += size;
+				
+				snprintf(reply_ptr, rem, " %02X", (value >> 25) & 0xFF);
+				size = strlen(reply_ptr);
+				rem -= size;
+				reply_ptr += size;
+				
+				i++;
+				c += 4;
+				
+				if (c == 16)
+				{
+					fastboot_status = fastboot_send(fastboot_handle, reply, strlen(reply));
+					
+					if (fastboot_cmd_status(fastboot_status))
+						return 1;
+					
+					c = 0;
+					rem = 0x100;
+					reply_ptr = reply;
+					
+					snprintf(reply_ptr, rem, FASTBOOT_RESP_INFO " %08X  ", (unsigned int)paddress);
+					size = strlen(reply_ptr);
+					rem -= size;
+					reply_ptr += size;
+				}
+			}
+			
+			if (c != 0)
+			{
+				fastboot_status = fastboot_send(fastboot_handle, reply, strlen(reply));
+				return fastboot_cmd_status(fastboot_status);
+			}
+			
+			return 0;
+		}
+	}
+	
+	fastboot_status = fastboot_send(fastboot_handle, reply, strlen(reply));
+	return fastboot_cmd_status(fastboot_status);
+}
 
 /* Get */
 int fastboot_oem_cmd_oem_bldebug_get(int fastboot_handle, const char* args)
@@ -479,14 +603,16 @@ int fastboot_oem_cmd_oem_bldebug_get(int fastboot_handle, const char* args)
 	
 	if (address < 0)
 		snprintf(reply, ARRAY_SIZE(reply), FASTBOOT_RESP_INFO "Illegal address %d!", (int) address);
+	else if (address % 4)
+		snprintf(reply, ARRAY_SIZE(reply), FASTBOOT_RESP_INFO "Illegal address 0x%08X - unaligned access!", (int) address);
 	else
 	{
 		value = *((unsigned int*)address);
-		snprintf(reply, ARRAY_SIZE(reply), FASTBOOT_RESP_INFO "0x%X = 0x%X", (unsigned int) address, value);
+		snprintf(reply, ARRAY_SIZE(reply), FASTBOOT_RESP_INFO "0x%08X = 0x%08X", (unsigned int) address, value);
 	}
 	
 	fastboot_status = fastboot_send(fastboot_handle, reply, strlen(reply));
-	return fastboot_status_ok(fastboot_status) == 0;
+	return fastboot_cmd_status(fastboot_status);
 }
 
 /* Set */
@@ -504,6 +630,8 @@ int fastboot_oem_cmd_oem_bldebug_set(int fastboot_handle, const char* args)
 
 	if (address < 0)
 		snprintf(reply, ARRAY_SIZE(reply), FASTBOOT_RESP_INFO "Illegal address %d!", (int) address);
+	else if (address % 4)
+		snprintf(reply, ARRAY_SIZE(reply), FASTBOOT_RESP_INFO "Illegal address 0x%08X - unaligned access!", (int) address);
 	else
 	{
 		while (*endp == ' ')
@@ -519,12 +647,12 @@ int fastboot_oem_cmd_oem_bldebug_set(int fastboot_handle, const char* args)
 			value = strtol(endp, NULL, 16);
 		
 			*((unsigned int*)address) = (unsigned int) value;
-			snprintf(reply, ARRAY_SIZE(reply), FASTBOOT_RESP_INFO "0x%X = 0x%X", (unsigned int) address, (unsigned int) value);
+			snprintf(reply, ARRAY_SIZE(reply), FASTBOOT_RESP_INFO "0x%08X = 0x%08X", (unsigned int) address, (unsigned int) value);
 		}
 	}
 
 	fastboot_status = fastboot_send(fastboot_handle, reply, strlen(reply));
-	return fastboot_status_ok(fastboot_status) == 0;
+	return fastboot_cmd_status(fastboot_status);
 }
 
 #endif
@@ -553,6 +681,10 @@ struct fastboot_oem_cmd_list_item fastboot_oem_command_table[] =
 		.cmd_handler = &fastboot_oem_cmd_oem_unlock,
 	},
 #ifdef FASTBOOT_BOOTLOADER_DEBUG
+	{
+		.cmd_name = "bldebug dump",
+		.cmd_handler = &fastboot_oem_cmd_oem_bldebug_dump,
+	},
 	{
 		.cmd_name = "bldebug get",
 		.cmd_handler = &fastboot_oem_cmd_oem_bldebug_get,
