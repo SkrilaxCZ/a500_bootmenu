@@ -11,8 +11,11 @@ HOST_CFLAGS :=
 
 LIBGCC := -L $(shell dirname `$(CC) $(CFLAGS) -print-libgcc-file-name`) -lgcc
 
-CFLAGS := -Os -Wall -Wno-return-type -Wno-main -fno-builtin -fno-stack-protector -mthumb-interwork -march=armv7-a -mthumb -ffunction-sections -Iinclude
-AFLAGS := -D__ASSEMBLY__ -fno-builtin -march=armv7-a -ffunction-sections
+EXTRA_CFLAGS ?= 
+EXTRA_AFLAGS ?=
+
+CFLAGS := -Os -Wall -Wno-return-type -Wno-main -fno-builtin -fno-stack-protector -mthumb-interwork -march=armv7-a -mthumb -ffunction-sections -Iinclude $(EXTRA_CFLAGS)
+AFLAGS := -D__ASSEMBLY__ -fno-builtin -march=armv7-a -ffunction-sections $(EXTRA_AFLAGS)
 LDFLAGS := -static $(LIBGCC) -nostdlib --gc-sections 
 O ?= .
 
