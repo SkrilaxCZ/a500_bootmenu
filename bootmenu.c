@@ -176,6 +176,22 @@ finish:
 }
 
 /*
+ * Add custom elements to the cmdline
+ * Use snprintf to limit the size
+ */
+void configure_custom_cmdline(char* cmdline, int size)
+{
+	const char* debug_cmd;
+	
+	if (msc_cmd.debug_mode)
+		debug_cmd = "console=ttyS0,115200n8 debug_uartport=lsport ";
+	else
+		debug_cmd = "console=none debug_uartport=hsport ";
+		
+	snprintf(cmdline, size, debug_cmd);
+}
+
+/*
  * Boot Android (returns on ERROR)
  */
 void boot_android_image(const char* partition, int boot_handle)

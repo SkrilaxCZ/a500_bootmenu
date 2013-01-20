@@ -26,6 +26,7 @@
 .globl _main
 .globl _fb_compat_println
 .globl _fb_compat_println_error
+.globl _configure_custom_cmdline
 
 #Jumptable
 .align(2)
@@ -40,5 +41,6 @@ _fb_compat_println:
 _fb_compat_println_error:
 	b.w    fb_compat_println_error 
 
-
-
+.align(2)
+_configure_custom_cmdline:
+	b.w    configure_custom_cmdline 
