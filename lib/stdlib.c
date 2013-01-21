@@ -65,7 +65,7 @@ char* strchr(const char* s, int character)
 				 case 4: magic_bits = 0x7efefeffL; break;
 				 case 8: magic_bits = ((0x7efefefeL << 16) << 16) | 0xfefefeffL; break;
 				 default:
-					 abort ();
+					 return NULL;
 			 }
 			 
 			 /* Set up a longword, each of whose bytes is C.  */
@@ -75,7 +75,7 @@ char* strchr(const char* s, int character)
 				 /* Do the shift in two steps to avoid a warning if long has 32 bits.  */
 				 charmask |= (charmask << 16) << 16;
 			 if (sizeof (longword) > 8)
-				 abort ();
+				 return NULL;
 			 
 			 /* Instead of the traditional loop which tests each character,
 				*    we will test a longword at a time.  The tricky part is testing

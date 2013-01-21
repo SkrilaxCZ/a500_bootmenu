@@ -2,6 +2,8 @@
 # Makefile for bootmenu
 #
 
+CROSS-COMPILE ?= arm-elf-
+
 CC := $(CROSS_COMPILE)gcc
 LD := $(CROSS_COMPILE)ld
 OBJCOPY := $(CROSS_COMPILE)objcopy
@@ -14,14 +16,16 @@ LIBGCC := -L $(shell dirname `$(CC) $(CFLAGS) -print-libgcc-file-name`) -lgcc
 EXTRA_CFLAGS ?= 
 EXTRA_AFLAGS ?=
 
-CFLAGS := -Os -Wall -Wno-return-type -Wno-main -fno-builtin -fno-stack-protector -mthumb-interwork -march=armv7-a -mthumb -ffunction-sections -Iinclude $(EXTRA_CFLAGS)
-AFLAGS := -D__ASSEMBLY__ -fno-builtin -march=armv7-a -ffunction-sections $(EXTRA_AFLAGS)
+ARM_CFLAGS := -Os -Wall -Wno-return-type -Wno-main -fno-builtin -fno-stack-protector -mthumb-interwork -march=armv7-a -mtune=cortex-a9 -mfloat-abi=softfp -mfpu=vfp3 -ffunction-sections -Iinclude $(EXTRA_CFLAGS)
+THUMB_CFLAGS := $(ARM_CFLAGS) -mthumb
+AFLAGS := -D__ASSEMBLY__ -fno-builtin -march=armv7-a -mtune=cortex-a9 -mfloat-abi=softfp -mfpu=vfp3 -ffunction-sections $(EXTRA_AFLAGS)
 LDFLAGS := -static $(LIBGCC) -nostdlib --gc-sections 
 O ?= .
 
 LIB_OBJS := $(O)/lib/_ashldi3.o $(O)/lib/_ashrdi3.o  $(O)/lib/_div0.o $(O)/lib/_divsi3.o $(O)/lib/_lshrdi3.o $(O)/lib/_modsi3.o  $(O)/lib/_udivsi3.o $(O)/lib/_umodsi3.o $(O)/lib/stdlib.o  
 BL_OBJS := $(O)/bl_0_03_14.o $(O)/framebuffer.o $(O)/jpeg.o $(O)/bootmenu.o $(O)/fastboot.o $(O)/ext2fs.o
-OBJS := $(O)/start.o $(LIB_OBJS) $(BL_OBJS)
+ARM_OBJS := $(O)/debug.ao
+OBJS := $(O)/start.o $(LIB_OBJS) $(BL_OBJS) $(ARM_OBJS)
 
 BOOTLOADER := bootloader_v9
 
@@ -43,7 +47,10 @@ $(if $(OUTPUT_DIR),,$(error output directory "$(O)/lib" does not exist))
 all: $(O)/$(BOOTLOADER).bin $(O)/$(BOOTLOADER).blob
 
 $(O)/%.o : %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(THUMB_CFLAGS) -c $< -o $@
+	
+$(O)/%.ao : %.c
+	$(CC) $(ARM_CFLAGS) -c $< -o $@
 
 $(O)/%.o : %.S
 	$(CC) $(AFLAGS) -c $< -o $@
@@ -52,7 +59,7 @@ $(O)/bootmenu.elf: $(OBJS)
 	$(LD) $(LDFLAGS) -T ld-script -o $(O)/bootmenu.elf $(OBJS)
 
 $(O)/bootmenu.bin: $(O)/bootmenu.elf
-	$(OBJCOPY) -O binary $(O)/bootmenu.elf -R .note -R .comment -R .bss -S $@
+	$(OBJCOPY) -O binary $(O)/bootmenu.elf -R .note -R .comment --set-section-flags .bss=alloc,load,contents -S $@
 
 $(O)/$(BOOTLOADER).bin: $(O)/bootmenu.bin
 	cp -f bootloader.bin $@
@@ -62,7 +69,7 @@ $(O)/$(BOOTLOADER).bin: $(O)/bootmenu.bin
 	dd if=/dev/zero of=$@ bs=1 seek=622336 count=256 conv=notrunc
 
 $(O)/blobmaker:
-	$(HOST_CC)  $(HOST_CFLAGS) blobmaker.c -o $@
+	$(HOST_CC) $(HOST_CFLAGS) blobmaker.c -o $@
 	
 $(O)/$(BOOTLOADER).blob: $(O)/blobmaker $(O)/$(BOOTLOADER).bin
 	$(O)/blobmaker $(O)/$(BOOTLOADER).bin $@

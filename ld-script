@@ -22,20 +22,45 @@
 OUTPUT_FORMAT("elf32-littlearm", "elf32-littlearm", "elf32-littlearm")
 OUTPUT_ARCH(arm)
 ENTRY(_main)
+ENTRY(_fb_compat_println)
+ENTRY(_fb_compat_println_error)
+ENTRY(_configure_custom_cmdline)
+ENTRY(_debug_write)
 SECTIONS
 {
 	. = 0x00195000;
 	
 	. = ALIGN(4);
-	.text : { *(.text) }
+	.text : { *(.text .text.*) }
 
 	. = ALIGN(4);
-	.rodata : { *(.rodata) }
+	.rodata : { *(.rodata .rodata*) }
 
 	. = ALIGN(4);
-	.data : { *(.data) }
-
+	.data : { *(.data .data.*) }
+	
 	. = ALIGN(4);
-	.got : { *(.got) }
+	_sbss = . ;
+	.bss : { *(.bss .bss.*) }
+	_ebss = . ;
 }
 
+/* BL 0.03.14 symbols */
+
+/* ARM functions */
+strcmp = 0x17B120;
+strncmp = 0x17B1B8;
+strncpy = 0x17B0C8;
+strlen = 0x17B0F8;
+snprintf = 0x17C1DC;
+vsnprintf = 0x17C230;
+
+malloc = 0x179998;
+memcmp = 0x17B150;
+memcpy = 0x17B188;
+memset = 0x17B1F0;
+free = 0x1799F0;
+
+printf = 0x17C30C;
+
+sleep = 0x179F44;

@@ -333,7 +333,10 @@ void main(void* global_handle, int boot_handle)
 	struct font_color* fc;
 	
 	error_message[0] = '\0';
-		
+	
+	/* Write to the log */
+	printf("BOOTMENU: %s\n", bootloader_id);
+	
 	/* Initialize framebuffer */
 	fb_init();
 	

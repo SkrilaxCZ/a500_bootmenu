@@ -29,12 +29,14 @@
  * This file contains only functions that are linked to the bootloader binary.
  */
 
-#ifndef __thumb__
-#error Thumb mode must be used.
-#endif
+#ifndef BL_0_03_14_H
+#define BL_0_03_14_H
+
 
 #include <stddef.h>
 #include <stdarg.h>
+
+#ifdef __thumb__
 
 /* ===========================================================================
  * Thumb Mode functions
@@ -339,6 +341,8 @@ int fastboot_send(int fastboot_handle, const char *command, uint32_t command_len
 int fastboot_recv0(int fastboot_handle, char* cmd_buffer, uint32_t buffer_length, uint32_t* cmd_length); 
 int fastboot_recv5(int fastboot_handle, char* cmd_buffer, uint32_t buffer_length, uint32_t* cmd_length);
 
+#endif
+
 /* ===========================================================================
  * ARM Mode functions
  * ===========================================================================
@@ -383,3 +387,5 @@ extern uint32_t* framebuffer_size_ptr;
 
 /* Fastboot unknown */
 extern int* fastboot_unk_handle_var;
+
+#endif //!BL_0_03_14_H

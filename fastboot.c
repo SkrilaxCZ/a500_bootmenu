@@ -27,6 +27,7 @@
 #include <fastboot.h>
 #include <ext2fs.h>
 #include <stdlib.h>
+#include <debug.h>
 
 #define FASTBOOT_VERSION               "0.4"
 #define FASTBOOT_SECURE                "no"
@@ -655,6 +656,81 @@ int fastboot_oem_cmd_oem_bldebug_set(int fastboot_handle, const char* args)
 	return fastboot_cmd_status(fastboot_status);
 }
 
+/* dmesg */
+int fastboot_oem_cmd_oem_bldebug_dmesg(int fastboot_handle, const char* args)
+{
+	int fastboot_status, rotated, finished, sz, rem;
+	const char* print_begin = FASTBOOT_RESP_INFO "===== DMESG START =====";
+	const char* print_end = FASTBOOT_RESP_INFO "===== DMESG END =====";
+	char* ptr;
+	char* sline;
+	char* pline;
+	char line[0x100];
+		
+	fastboot_status = fastboot_send(fastboot_handle, print_begin, strlen(print_begin));
+	if (fastboot_cmd_status(fastboot_status))
+		return 1;
+	
+	ptr = debug_start_ptr;
+	rotated = 0;
+	finished = 0;
+	
+	snprintf(line, ARRAY_SIZE(line), FASTBOOT_RESP_INFO);
+	sline = &(line[strlen(line)]);
+	sz = ARRAY_SIZE(line) - strlen(FASTBOOT_RESP_INFO) - 1;
+	
+	while (1)
+	{
+		pline = sline;
+		rem = sz;
+		
+		while (1)
+		{			
+			if (rem <= 0)				
+				break;
+				
+			if (*ptr == '\n')
+			{
+				ptr++;
+				break;
+			}
+			
+			if (*ptr == '\0')
+			{
+				if (!rotated && (((unsigned int)debug_start_ptr) > ((unsigned int)debug_end_ptr)) )
+				{
+					ptr = debug_text;
+					rotated = 1;
+					continue;
+				}
+				
+				finished = 1;
+				break;
+			}
+			
+			*pline = *ptr;
+			pline++;
+			ptr++;
+			rem--;
+		}
+				
+		if (finished && pline == sline)
+			break;
+		
+		*pline = '\0';
+		
+		fastboot_status = fastboot_send(fastboot_handle, line, strlen(line));
+		if (fastboot_cmd_status(fastboot_status))
+			return 1;
+			
+		if (finished)
+			break;
+	}
+	
+	fastboot_status = fastboot_send(fastboot_handle, print_end, strlen(print_end));
+	return fastboot_cmd_status(fastboot_status);
+}
+
 #endif
 
 /* List of fastboot oem commands */
@@ -693,6 +769,10 @@ struct fastboot_oem_cmd_list_item fastboot_oem_command_table[] =
 		.cmd_name = "bldebug set",
 		.cmd_handler = &fastboot_oem_cmd_oem_bldebug_set,
 	},
+	{
+		.cmd_name = "bldebug dmesg",
+		.cmd_handler = &fastboot_oem_cmd_oem_bldebug_dmesg,
+	}
 #endif
 };
 

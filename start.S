@@ -27,6 +27,7 @@
 .globl _fb_compat_println
 .globl _fb_compat_println_error
 .globl _configure_custom_cmdline
+.globl _debug_write
 
 #Jumptable
 .align(2)
@@ -44,3 +45,9 @@ _fb_compat_println_error:
 .align(2)
 _configure_custom_cmdline:
 	b.w    configure_custom_cmdline 
+
+.arm
+
+.align(8)
+_debug_write:
+	b      debug_write

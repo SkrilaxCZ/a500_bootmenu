@@ -30,7 +30,7 @@
  * This file contains only functions that are linked to the bootloader binary.
  */
 
-#include "bl_0_03_14.h"
+#include <bl_0_03_14.h>
 
 /* ===========================================================================
  * Thumb Mode functions
@@ -100,25 +100,9 @@ void NAKED android_boot_image(const char* bootimg_data, uint32_t bootimg_size, i
 /* 
  * Standard library:
  * 
- * You can use your own of course, but these are found in the bootloader
+ * You can use your own of course, but these are found in the bootloader.
+ * These are defined in linker script
  */
-
-int   NAKED strcmp(const char *str1, const char *str2)                                 { ASM_ARM_B(0x17B120); }
-int   NAKED strncmp(const char *str1, const char *str2, int n)                         { ASM_ARM_B(0x17B1B8); }
-char* NAKED strncpy(char *destination, const char *source, int num)                    { ASM_ARM_B(0x17B0C8); }
-int   NAKED strlen(const char *str)                                                    { ASM_ARM_B(0x17B0F8); }
-int   NAKED snprintf(char *str, int size, const char *format, ...)                     { ASM_ARM_B(0x17C1DC); }
-int   NAKED vsnprintf(char *str, int size, const char *format, va_list ap)             { ASM_ARM_B(0x17C230); }
-
-void* NAKED malloc(int size)                                                           { ASM_ARM_B(0x179998); }
-int   NAKED memcmp(const void *ptr1, const void *ptr2, int num)                        { ASM_ARM_B(0x17B150); }
-void* NAKED memcpy(void *destination, const void *source, int num)                     { ASM_ARM_B(0x17B188); }
-void* NAKED memset(void *ptr, int value, int num)                                      { ASM_ARM_B(0x17B1F0); }
-void  NAKED free(void *ptr)                                                            { ASM_ARM_B(0x1799F0); }
-
-void  NAKED printf(const char *format, ...)                                            { ASM_ARM_B(0x17C30C); }
-
-void  NAKED sleep(int ms)                                                              { ASM_ARM_B(0x179F44); }
 
 /* ===========================================================================
  * Functions using magic argument (need to be reverse engineered more)
