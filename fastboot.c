@@ -551,7 +551,7 @@ int fastboot_oem_cmd_oem_bldebug_dump(int fastboot_handle, const char* args)
 				rem -= size;
 				reply_ptr += size;
 				
-				snprintf(reply_ptr, rem, " %02X", (value >> 25) & 0xFF);
+				snprintf(reply_ptr, rem, " %02X", (value >> 24) & 0xFF);
 				size = strlen(reply_ptr);
 				rem -= size;
 				reply_ptr += size;
