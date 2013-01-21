@@ -567,12 +567,14 @@ void main(void* global_handle, int boot_handle)
 				case 5: /* Toggle boot kernel image */
 					msc_cmd.boot_partition = !msc_cmd.boot_partition;
 					msc_cmd_write();
+					printf("BOOTMENU: Boot partition %d\n", msc_cmd.boot_partition);
 					selected_option = 0;
 					break;
 					
 				case 6: /* Toggle debug mode */
 					msc_cmd.debug_mode = !msc_cmd.debug_mode;
 					msc_cmd_write();
+					printf("BOOTMENU: Debug mode %d\n", msc_cmd.debug_mode);
 					selected_option = 0;
 					break;
 					

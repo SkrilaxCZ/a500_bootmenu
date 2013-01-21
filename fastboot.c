@@ -364,6 +364,8 @@ int fastboot_oem_cmd_sbk(int fastboot_handle, const char* args)
 	
 	fb_clear();
 	
+	printf("FASTBOOT: SBK: 0x%08x 0x%08x 0x%08x 0x%08x\n", ___swab32(sbk[0]), ___swab32(sbk[1]), ___swab32(sbk[2]), ___swab32(sbk[3]));
+	
 	fb_printf("Displaying your SBK to be used with nvflash.\n");
 	fb_printf("Press POWER to continue.\n\n");
 	fb_printf("SBK: 0x%08x 0x%08x 0x%08x 0x%08x\n", ___swab32(sbk[0]), ___swab32(sbk[1]), ___swab32(sbk[2]), ___swab32(sbk[3]));
@@ -881,6 +883,7 @@ void fastboot_main(void* global_handle, int boot_handle, char* error_msg, int er
 				
 			fastboot_status = 0;
 			fastboot_init = 1;
+			printf("FASTBOOT: Initialized.\n");
 		}
 		
 		/* Set error state, if it persists till the end then it's error */
@@ -901,6 +904,7 @@ void fastboot_main(void* global_handle, int boot_handle, char* error_msg, int er
 		if (fastboot_status_ok(fastboot_status))
 		{
 			/* Parse the command */
+			printf("FASTBOOT: Received command \"%s\".\n", cmd_buffer);
 			
 			if (!strncmp(cmd_buffer, FASTBOOT_CMD_DOWNLOAD, strlen(FASTBOOT_CMD_DOWNLOAD)))
 			{
@@ -915,10 +919,12 @@ void fastboot_main(void* global_handle, int boot_handle, char* error_msg, int er
 				if (download_size > FASTBOOT_DOWNLOAD_MAX_SIZE)
 				{
 					fb_printf("Downloads over 700 MiB are not supported.\n\n");
+					printf("FASTBOOT: Failed downloading %d MiB\n.", download_size / (1024 * 1024));
 					fastboot_status = 6;
 					goto error;
 				}
 				
+				printf("FASTBOOT: Downloading %d MiB\n.", download_size / (1024 * 1024));
 				downloaded_data = malloc(download_size);
 				if (downloaded_data == NULL)
 				{
@@ -1093,7 +1099,7 @@ void fastboot_main(void* global_handle, int boot_handle, char* error_msg, int er
 					}
 					else
 					{
-						fb_printf("Done.");
+						fb_printf("Done.\n");
 						fb_refresh();
 						fastboot_status = 0;
 						fastboot_error = 0;
@@ -1128,6 +1134,7 @@ void fastboot_main(void* global_handle, int boot_handle, char* error_msg, int er
 					fb_set_status("Booting downloaded kernel image");
 					fb_refresh();
 					
+					printf("FASTBOOT: Booting downloaded kernel image\n");
 					android_boot_image(downloaded_data, download_size, boot_handle);
 					
 					/* It returned */
@@ -1167,7 +1174,7 @@ void fastboot_main(void* global_handle, int boot_handle, char* error_msg, int er
 					
 					if (fastboot_status_ok(fastboot_status))
 					{
-						fb_printf("Done.");
+						fb_printf("Done.\n");
 						fb_refresh();
 						fastboot_status = 0;
 						fastboot_error = 0;
@@ -1295,10 +1302,15 @@ void fastboot_main(void* global_handle, int boot_handle, char* error_msg, int er
 		
 		/* Error cleared, go for another command */
 		if (!fastboot_error)
+		{
+			printf("FASTBOOT: Command processed successfully\n");
 			continue;
+		}
 		
 error:
 		/* If we got here, we get command error in fastboot_status */
+		printf("FASTBOOT: Error processing command! (%08x)\n", fastboot_status);
+		
 		snprintf(reply_buffer, ARRAY_SIZE(reply_buffer), FASTBOOT_RESP_FAIL "(%08x)", fastboot_status);
 		fastboot_send(fastboot_handle, reply_buffer, strlen(reply_buffer));
 		
@@ -1308,5 +1320,6 @@ error:
 		/* Unload fastboot handle */
 		fastboot_unload_handle(fastboot_handle);
 		fastboot_init = 0;
+		printf("FASTBOOT: Uninitialized.\n");
 	}
 }
