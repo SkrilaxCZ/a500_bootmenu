@@ -43,7 +43,6 @@
  * ===========================================================================
  */
 
-
 /* Update bootloader if we have the blob (partially related to msc) 
  * This function implements FOTA check, that's why recovery & bootloader update is merged.
  */

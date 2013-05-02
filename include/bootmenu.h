@@ -27,6 +27,7 @@
 #define MSC_CMD_FASTBOOT        "FastbootMode"
 #define MSC_CMD_BOOTMENU        "BootmenuMode"
 
+/* MSC command */
 struct msc_command
 {
 	/* Boot command:
@@ -40,14 +41,21 @@ struct msc_command
 	 */
 	unsigned char debug_mode;
 	
-	/* Boot partition:
+	/* Boot image:
 	 * 00 - LNX
 	 * 01 - AKB
+	 * 02 - first item parsed from boot file
+	 * 03 - second item parsed from boot file
 	 */
-	unsigned char boot_partition;
+	unsigned char boot_image;
 	
-	/* Not used */
-	unsigned char unused[0x06];
+	/* Erase cache on boot */
+	unsigned char erase_cache;
+	
+	/* Path to the boot file in BL format:
+	 * Example: UBN:/boot/menu.lst
+	 */
+	unsigned char boot_file[256];
 };
 
 /* How to boot */
@@ -69,6 +77,23 @@ enum boot_mode
 	BM_BOOTMENU
 };
 
+/* Menu item */
+struct boot_menu_item
+{
+	const char* title;
+	int id;
+};
+
+/* Interactive boot selection item */
+struct boot_selection_item
+{
+	char partition[10];
+	char path_android[256];
+	char path_zImage[256];
+	char path_ramdisk[256];
+	char cmdline[512];
+};
+
 /* GPIO key descriptors */
 struct gpio_key
 {
@@ -84,7 +109,7 @@ enum key_type
 	KEY_VOLUME_UP = 0,
 	KEY_VOLUME_DOWN = 1,
 	KEY_ROTATION_LOCK = 2,
-	KEY_POWER = 3
+	KEY_POWER = 3,
 };
 
 /*
@@ -108,8 +133,14 @@ extern enum boot_mode msc_boot_mode;
 /* Is key active */
 int get_key_active(enum key_type key);
 
-/* Wait for key event*/
+/* Wait for key event */
 enum key_type wait_for_key_event();
+
+/* Wait for key event with timeout */
+enum key_type wait_for_key_event_timed(int* timeout);
+
+/* Show menu */
+int show_menu(struct boot_menu_item* items, int num_items, int initial_selection, const char* message, const char* error, int timeout);
 
 /*
  * Misc partition
@@ -125,14 +156,26 @@ void msc_cmd_write();
  * Booting
  */
 
-/* Boot android */
-void boot_android_image(const char* partition, int boot_magic_value);
+/* Load boot images */
+int load_boot_images(struct boot_selection_item* boot_items, struct boot_menu_item* menu_items, int max_items);
 
-/* Boots normally */
-void boot_normal(int boot_partition, int boot_magic_value);
+/* Show interactive boot selection */
+void boot_interactively(int initial_selection, const char* message, const char* error, int boot_handle, char* error_message, int error_message_size);
+
+/* Set default boot image interactivey*/
+void set_default_boot_image(int initial_selection);
+
+/* Boot android image from partition */
+void boot_android_image_from_partition(const char* partition, int boot_handle);
+
+/* Boots normally (shows interactive boot screen) */
+void boot_normal(struct boot_selection_item* item, const char* status, int boot_handle);
+
+/* Boot from partition and update screen */
+void boot_partition(const char* partition, const char* status, int boot_handle);
 
 /* Boots recovery */
-void boot_recovery(int boot_magic_value);
+void boot_recovery(int boot_handle);
 
 /* Bootmenu new frame */
 void bootmenu_new_frame(void);

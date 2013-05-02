@@ -22,6 +22,8 @@
 #ifndef SKIN_H
 #define SKIN_H
 
+#include "framebuffer.h"
+
 /* Required font properties */
 struct font_data
 {
@@ -29,6 +31,24 @@ struct font_data
 	int font_width;
 	int font_outline;
 	int font_kerning;
+};
+
+/* Bootloader skin structure */
+struct bootloader_skin
+{
+	/* Magic ID */
+	char              magic[4];
+	
+	/* Colors */
+	struct font_color title_color;
+	struct font_color text_color;
+	struct font_color error_text_color;
+	struct color      highlight_color;
+	struct font_color highlight_text_color;
+	
+	/* Outlining */
+	int               font_outline;
+	int               font_kerning;
 };
 
 /* Default parameters for outlining */
@@ -43,7 +63,7 @@ struct font_data
 
 /* Images */
 
-#define CUSTOM_COLORS_ID                 "CLRS"
+#define CUSTOM_COLORS_ID                 "CLR2"
 #define CUSTOM_COLORS_OFFSET             0x19FF00
 
 #define FONT_OFFSET                      0x1A0000

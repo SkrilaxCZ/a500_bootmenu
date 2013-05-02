@@ -49,6 +49,9 @@ struct font_data font =
 #define TEXT_Y_OFFSET           (4*outlined_font_height(&font))
 #define TEXT_X_OFFSET           ((SCREEN_WIDTH/2) - ((outlined_font_width(&font) + font.font_kerning) * (TEXT_LINE_CHARS/2)))
 
+/* Skin */
+struct bootloader_skin skin;
+
 /* Title color */
 struct font_color title_color =
 {
@@ -336,10 +339,36 @@ void fb_init()
 	framebuffer = *framebuffer_ptr;
 	framebuffer_size = *framebuffer_size_ptr;
 	
+	builder = malloc(SCREEN_HEIGHT * SCREEN_WIDTH * sizeof(struct color));
+	if (!builder)
+	{
+		fb_error("Failed to initialize framebuffer.");
+		return;
+	}
+	
+	/* Clear builder */
+	memset(builder, 0, malloc(SCREEN_HEIGHT * SCREEN_WIDTH * sizeof(struct color)));
+	
+	/* Read skin */
+	memcpy(&skin, (const uint8_t*)(CUSTOM_COLORS_OFFSET), sizeof(struct bootloader_skin));
+	
+	if (!memcmp(skin.magic, CUSTOM_COLORS_ID, 4))
+	{
+		/* Copy colors */
+		title_color = skin.title_color;
+		text_color = skin.text_color;
+		error_text_color = skin.error_text_color;
+		highlight_color = skin.highlight_color;
+		highlight_text_color = skin.highlight_text_color;
+		
+		font.font_outline = skin.font_outline;
+		font.font_kerning = skin.font_kerning;
+	}
+	
 	/* Init font */
 	jpg_out_data = malloc(MAXIMUM_FONT_DATA_SIZE);
 	
-	if (jpg_out_data != NULL)
+	if (jpg_out_data)
 	{
 		/* The font is in RGB format */
 		if (!jpeg_load_rgbx(jpg_out_data, MAXIMUM_FONT_DATA_SIZE, &jpg_width, &jpg_height, 
@@ -411,7 +440,10 @@ void fb_init()
 		jpg_out_data = NULL;
 	}
 	else
+	{
 		fb_error("Failed to initialize font.");
+		return;
+	}
 	
 	/* Init background */
 	background = malloc(SCREEN_HEIGHT * SCREEN_WIDTH * sizeof(struct color));
@@ -435,50 +467,7 @@ void fb_init()
 		}
 		
 	}
-	
-	/* SUSPENDED UNTIL FINAL VERSION IS MADE */
-#if 0
-	
-	/* Init colors */
-	cdata = (const uint8_t*)(CUSTOM_COLORS_OFFSET);
-	
-	if (!memcmp(cdata, CUSTOM_COLORS_ID, strlen(CUSTOM_COLORS_ID)))
-	{
-		/* We have custom colors */
-		cdata += strlen(CUSTOM_COLORS_ID);
 		
-		/* Title */
-		title_color.R = *cdata++;
-		title_color.G = *cdata++;
-		title_color.B = *cdata++;
-		title_color.X = *cdata++;
-		
-		/* Text */
-		text_color.R = *cdata++;
-		text_color.G = *cdata++;
-		text_color.B = *cdata++;
-		text_color.X = *cdata++;
-		
-		/* Error text */
-		error_text_color.R = *cdata++;
-		error_text_color.G = *cdata++;
-		error_text_color.B = *cdata++;
-		error_text_color.X = *cdata++;
-
-		/* Highlighting color */
-		highlight_color.R = *cdata++;
-		highlight_color.G = *cdata++;
-		highlight_color.B = *cdata++;
-		highlight_color.X = *cdata++;
-		
-		/* Highlighted text */
-		highlight_text_color.R = *cdata++;
-		highlight_text_color.G = *cdata++;
-		highlight_text_color.B = *cdata++;
-		highlight_text_color.X = *cdata++;
-	}
-#endif
-	
 	text_cur_x = 0;
 	text_cur_y = 0;
 	
@@ -486,10 +475,6 @@ void fb_init()
 	title[0] = '\0';
 	status[0] = '\0';
 	text[0][0] = '\0';
-	
-	/* Clear framebuffer */
-	builder = framebuffer + (SCREEN_HEIGHT * SCREEN_WIDTH * sizeof(struct color));
-	memset(framebuffer, 0, framebuffer_size);
 }
 
 /*
@@ -748,7 +733,7 @@ void fb_refresh()
 	struct color b;
 	struct color c;
 	struct color o;
-		
+			
 	/* Clear framebuffer */
 	if (background != NULL)
 		memcpy(builder, background, SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(struct color));
@@ -784,7 +769,7 @@ void fb_refresh()
 	for (i = 0; i <= text_cur_y && i < TEXT_LINES; i++)
 		fb_draw_string(TEXT_X_OFFSET, TEXT_Y_OFFSET + i * outlined_font_height(&font), text[i], &b, &c, &o);
 		
-	/* Push and refresh framebuffer */
+	/* Push and refresh the framebuffer */
 	memcpy(framebuffer, builder, SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(struct color));
 	framebuffer_unknown_call();
 }

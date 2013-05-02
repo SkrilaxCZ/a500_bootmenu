@@ -206,15 +206,26 @@ void fastboot_get_var_wifi_only(char* reply_buffer, int reply_buffer_size)
 	strncpy(reply_buffer, repl, reply_buffer_size);
 }
 
-/* Boot partition */
-void fastboot_get_var_boot_partition(char* reply_buffer, int reply_buffer_size)
+/* Boot partition (id) */
+void fastboot_get_var_boot_image_id(char* reply_buffer, int reply_buffer_size)
 {
+	snprintf(reply_buffer, reply_buffer_size, "%d", msc_cmd.boot_image);
+}
+
+/* Boot partition (name) */
+void fastboot_get_var_boot_image_name(char* reply_buffer, int reply_buffer_size)
+{
+	struct boot_selection_item boot_items[20];
+	struct boot_menu_item menu_items[20];
+	int num_items;
 	const char* repl;
 	
-	if (msc_cmd.boot_partition == 0)
-		repl = "b1";
+	num_items = load_boot_images(boot_items, menu_items, ARRAY_SIZE(boot_items));
+	
+	if (msc_cmd.boot_image >= num_items)
+		repl = menu_items[0].title;
 	else
-		repl = "b2";
+		repl = menu_items[msc_cmd.boot_image].title;
 	
 	strncpy(reply_buffer, repl, reply_buffer_size);
 }
@@ -285,8 +296,12 @@ struct fastboot_get_var_list_item fastboot_variable_table[] =
 		.var_handler = &fastboot_get_var_wifi_only,
 	},
 	{
-		.var_name = "bootmode",
-		.var_handler = &fastboot_get_var_boot_partition,
+		.var_name = "boot_image_id",
+		.var_handler = fastboot_get_var_boot_image_id,
+	},
+	{
+		.var_name = "boot_image_name",
+		.var_handler = fastboot_get_var_boot_image_name,
 	},
 	{
 		.var_name = "debugmode",
@@ -384,8 +399,39 @@ int fastboot_oem_cmd_sbk(int fastboot_handle, const char* args)
 	return fastboot_cmd_status(fastboot_status);
 }
 
+/* Boot image */
+int fastboot_oem_cmd_set_boot_image(int fastboot_handle, const char* args)
+{
+	int fastboot_status;
+	const char* info_reply_ok = FASTBOOT_RESP_INFO "Boot partition set to: %d";
+	const char* info_reply_bad = FASTBOOT_RESP_INFO "Invalid boot partition";
+	char ok_reply_buffer[128];
+	long int boot_image;
+	
+	if (args == NULL)
+	{
+		fastboot_status = fastboot_send(fastboot_handle, info_reply_bad, strlen(info_reply_bad));
+		return fastboot_cmd_status(fastboot_status);
+	}
+	
+	boot_image = strtol(args, NULL, 10);
+	
+	if (boot_image < 0 || boot_image > 0xFF)
+	{
+		fastboot_status = fastboot_send(fastboot_handle, info_reply_bad, strlen(info_reply_bad));
+		return fastboot_cmd_status(fastboot_status);
+	}
+	
+	msc_cmd.boot_image = (unsigned char)boot_image;
+	msc_cmd_write();
+	
+	snprintf(ok_reply_buffer, ARRAY_SIZE(ok_reply_buffer), info_reply_ok, msc_cmd.boot_image);
+	fastboot_status = fastboot_send(fastboot_handle, ok_reply_buffer, strlen(ok_reply_buffer));
+	return fastboot_cmd_status(fastboot_status);
+}
+
 /* Debug ON/OFF */
-int fastboot_oem_cmd_debugmode(int fastboot_handle, const char* args)
+int fastboot_oem_cmd_debug_mode(int fastboot_handle, const char* args)
 {
 	int fastboot_status;
 	const char* info_reply_on = FASTBOOT_RESP_INFO "Debug set to ON";
@@ -414,37 +460,6 @@ int fastboot_oem_cmd_debugmode(int fastboot_handle, const char* args)
 	return fastboot_cmd_status(fastboot_status);
 }
 
-/* Set primary boot partition */
-int fastboot_oem_cmd_setboot(int fastboot_handle, const char* args)
-{
-	int fastboot_status;
-	const char* info_reply_b1 = FASTBOOT_RESP_INFO "Set to boot primary kernel image.";
-	const char* info_reply_b2 = FASTBOOT_RESP_INFO "Set to boot secondary kernel image.";
-	const char* info_reply_bad = FASTBOOT_RESP_INFO "Invalid boot kernel image";
-	const char* reply;
-	
-	if (!strncmp(args, "b1", strlen("b1")))
-	{
-		msc_cmd.boot_partition = 0;
-		msc_cmd_write();
-		
-		reply = info_reply_b1;
-	}
-	else if (!strncmp(args, "b2", strlen("b2")))
-	{
-		msc_cmd.boot_partition = 1;
-		msc_cmd_write();
-		
-		reply = info_reply_b2;
-	}
-	else
-		reply = info_reply_bad;
-	
-	
-	fastboot_status = fastboot_send(fastboot_handle, reply, strlen(reply));
-	return fastboot_cmd_status(fastboot_status);
-}
-
 /* Lock (cough cough) */
 int fastboot_oem_cmd_oem_lock(int fastboot_handle, const char* args)
 {
@@ -466,7 +481,7 @@ int fastboot_oem_cmd_oem_unlock(int fastboot_handle, const char* args)
 }
 
 /* Some debugging functions */
-#ifdef FASTBOOT_BOOTLOADER_DEBUG
+#ifdef BOOTLOADER_ENABLE_DEBUG
 
 /* Dump */
 int fastboot_oem_cmd_oem_bldebug_dump(int fastboot_handle, const char* args)
@@ -743,12 +758,12 @@ struct fastboot_oem_cmd_list_item fastboot_oem_command_table[] =
 		.cmd_handler = &fastboot_oem_cmd_sbk,
 	},
 	{
-		.cmd_name = "debug",
-		.cmd_handler = &fastboot_oem_cmd_debugmode,
+		.cmd_name = "setboot",
+		.cmd_handler = &fastboot_oem_cmd_set_boot_image,
 	},
 	{
-		.cmd_name = "setboot",
-		.cmd_handler = &fastboot_oem_cmd_setboot,
+		.cmd_name = "debug",
+		.cmd_handler = &fastboot_oem_cmd_debug_mode,
 	},
 	{
 		.cmd_name = "lock",
@@ -758,7 +773,7 @@ struct fastboot_oem_cmd_list_item fastboot_oem_command_table[] =
 		.cmd_name = "unlock",
 		.cmd_handler = &fastboot_oem_cmd_oem_unlock,
 	},
-#ifdef FASTBOOT_BOOTLOADER_DEBUG
+#ifdef BOOTLOADER_ENABLE_DEBUG
 	{
 		.cmd_name = "bldebug dump",
 		.cmd_handler = &fastboot_oem_cmd_oem_bldebug_dump,
@@ -1076,8 +1091,9 @@ void fastboot_main(void* global_handle, int boot_handle, char* error_msg, int er
 				{
 					if (bootloader_flash)
 					{
-						/* Set MSC to reboot to bootloader */
+						/* Set MSC to reboot to bootloader and to erase cache afterwards */
 						memcpy(msc_cmd.boot_command, MSC_CMD_FASTBOOT, strlen(MSC_CMD_FASTBOOT));
+						msc_cmd.erase_cache = 1;
 						msc_cmd_write();
 						
 						/* Flash the update */
@@ -1289,7 +1305,7 @@ void fastboot_main(void* global_handle, int boot_handle, char* error_msg, int er
 					if (msc_boot_mode == BM_RECOVERY)
 						boot_recovery(boot_handle);
 					else
-						boot_normal(msc_cmd.boot_partition, boot_handle);
+						boot_interactively(msc_cmd.boot_image, NULL, NULL, boot_handle, NULL, 0);
 					
 					/* Booting returned - back to bootmenu */
 					strncpy(error_msg, "Booting kernel image from fastboot failed.", error_msg_size);
