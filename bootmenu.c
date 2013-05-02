@@ -37,6 +37,7 @@
 
 /* Bootloader ID */
 const char* bootloader_id = "Skrilax_CZ's bootloader V9";
+const char* bootloader_short_id = "V9";
 
 /* Boot menu items */
 struct boot_menu_item boot_menu_items[] =
@@ -387,6 +388,7 @@ int show_menu(struct boot_menu_item* items, int num_items, int initial_selection
 void configure_custom_cmdline(char* cmdline, int size)
 {
 	const char* debug_cmd;
+	int len;
 
 	if (msc_cmd.debug_mode)
 		debug_cmd = "console=ttyS0,115200n8 debug_uartport=lsport ";
@@ -394,6 +396,11 @@ void configure_custom_cmdline(char* cmdline, int size)
 		debug_cmd = "console=none debug_uartport=hsport ";
 
 	snprintf(cmdline, size, debug_cmd);
+	len = strlen(cmdline);
+	cmdline += len;
+	size -= len;
+
+	snprintf(cmdline, size, "skrilax.bootloader=%s", bootloader_short_id);
 }
 
 /*
