@@ -347,7 +347,7 @@ void fb_init()
 	}
 
 	/* Clear builder */
-	memset(builder, 0, malloc(SCREEN_HEIGHT * SCREEN_WIDTH * sizeof(struct color)));
+	memset(builder, 0, SCREEN_HEIGHT * SCREEN_WIDTH * sizeof(struct color));
 
 	/* Read skin */
 	memcpy(&skin, (const uint8_t*)(CUSTOM_COLORS_OFFSET), sizeof(struct bootloader_skin));
