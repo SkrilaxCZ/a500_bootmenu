@@ -107,57 +107,42 @@ void fastboot_get_var_baseband_version(char* reply_buffer, int reply_buffer_size
 /* Android version */
 void fastboot_get_var_android_version(char* reply_buffer, int reply_buffer_size)
 {
-	int sz, len;
-	char *data, *ptr, *end;
+	int len;
+	char *ptr, *chr;
+	char line[128];
 
 	/* Mount system partition */
 	if (ext2fs_mount("APP"))
 		return;
 
 	/* Open build.prop file */
-	sz = ext2fs_open("/build.prop");
-	if (sz == -1)
+	if (ext2fs_open("/build.prop") == -1)
 		goto fail;
 
-	/* It's definitely in 1st kB */
-	if (sz > 1024);
-		sz = 1024;
-
-	data = malloc(sz);
-	if (!data)
-		goto fail2;
-
-	if (ext2fs_read(data, sz) != sz)
-		goto fail3;
-
-	ptr = data;
 	len = strlen(ANDROID_VERSION_PROP_NAME "=");
-	end = strchr(ptr, '\n');
 
 	while(1)
 	{
-		if (!strncmp(ptr, ANDROID_VERSION_PROP_NAME "=", len))
+		if (!ext2fs_gets(line, ARRAY_SIZE(line)))
 		{
-			ptr += len;
-			len = end - ptr;
-			if (len > reply_buffer_size)
-				len = reply_buffer_size;
-
-			strncpy(reply_buffer, ptr, len);
-			break;
+			reply_buffer[0] = '\0';
+			return;
 		}
 
-		if (!end)
-			break;
+		if (!strncmp(line, ANDROID_VERSION_PROP_NAME "=", len))
+		{
+			ptr = &line[len];
+			chr = strchr(line, '\n');
+			if (chr)
+				*chr = '\0';
 
-		ptr = end + 1;
-		end = strchr(ptr, '\n');
+			strncpy(reply_buffer, ptr, reply_buffer_size);
+			break;
+		}
 	}
 
-fail3:
-	free(data);
-fail2:
 	ext2fs_close();
+
 fail:
 	ext2fs_unmount();
 }

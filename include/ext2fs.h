@@ -31,11 +31,13 @@
 #define SECTOR_SIZE        0x200
 #define SECTOR_BITS        9
 
-extern int ext2fs_ls(const char* dirname);
-extern int ext2fs_open(const char* filename);
-extern int ext2fs_read(char* buf, uint32_t len);
-extern int ext2fs_close(void);
-extern int ext2fs_mount(const char* partition);
-extern int ext2fs_unmount(void);
+int ext2fs_ls(const char* dirname);
+int ext2fs_open(const char* filename);
+int ext2fs_read(char* buf, unsigned int len);
+int ext2fs_seek(int pos);
+int ext2fs_gets(char* buf, int bufsize);
+int ext2fs_close(void);
+int ext2fs_mount(const char* partition);
+int ext2fs_unmount(void);
 
 #endif //!EXT2FS_H

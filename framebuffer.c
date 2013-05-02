@@ -64,9 +64,9 @@ struct font_color title_color =
 	},
 	.outline =
 	{
-		.R = 0x00,
-		.G = 0x00,
-		.B = 0x00,
+		.R = 0xCD,
+		.G = 0xE8,
+		.B = 0xA3,
 		.X = 0x00,
 	}
 };
@@ -83,9 +83,9 @@ struct font_color text_color =
 	},
 	.outline =
 	{
-		.R = 0x00,
-		.G = 0x00,
-		.B = 0x00,
+		.R = 0xCD,
+		.G = 0xE8,
+		.B = 0xA3,
 		.X = 0x00,
 	}
 };
@@ -102,9 +102,9 @@ struct font_color error_text_color =
 	},
 	.outline =
 	{
-		.R = 0x00,
-		.G = 0x00,
-		.B = 0x00,
+		.R = 0xCD,
+		.G = 0xE8,
+		.B = 0xA3,
 		.X = 0x00,
 	}
 };
@@ -112,9 +112,9 @@ struct font_color error_text_color =
 /* Highlighting color */
 struct color highlight_color =
 {
-	.R = 0xFF,
-	.G = 0xFF,
-	.B = 0xFF,
+	.R = 0xCD,
+	.G = 0xE8,
+	.B = 0xA3,
 	.X = 0x00,
 };
 
@@ -123,16 +123,16 @@ struct font_color highlight_text_color =
 {
 	.color =
 	{
-		.R = 0x3F,
-		.G = 0x3F,
-		.B = 0x3F,
+		.R = 0x00,
+		.G = 0x00,
+		.B = 0x00,
 		.X = 0x00,
 	},
 	.outline =
 	{
-		.R = 0xFF,
-		.G = 0xFF,
-		.B = 0xFF,
+		.R = 0xCD,
+		.G = 0xE8,
+		.B = 0xA3,
 		.X = 0x00,
 	}
 };

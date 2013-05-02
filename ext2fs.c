@@ -209,10 +209,14 @@ typedef struct ext4_extent_header* ext4_extent_header_t;
 
 static struct ext2_data* ext2fs_root = NULL;
 static ext2fs_node_t ext2fs_file = NULL;
+static int ext2fs_pos = 0;
+static int ext2fs_len = 0;
 static int symlinknest = 0;
 static unsigned int inode_size;
 static int ext_pt_handle = -1;
 static uint64_t pt_size;
+static char gets_buffer[16];
+static char* gets_buffer_ptr = gets_buffer;
 
 static int ext2fs_devread(uint64_t sector, int byte_offset, int byte_len, char *buf)
 {
@@ -827,6 +831,7 @@ int ext2fs_open(const char* filename)
 
 	len = __le32_to_cpu(fdiro->inode.size);
 	ext2fs_file = fdiro;
+	ext2fs_len = len;
 	return len;
 
 fail:
@@ -851,7 +856,7 @@ int ext2fs_close(void)
 	return 0;
 }
 
-int ext2fs_read(char* buf, uint32_t len)
+int ext2fs_read(char* buf, unsigned int len)
 {
 	int status;
 
@@ -861,8 +866,79 @@ int ext2fs_read(char* buf, uint32_t len)
 	if (ext2fs_file == NULL)
 		return 1;
 
-	status = ext2fs_read_file(ext2fs_file, 0, len, buf);
+	status = ext2fs_read_file(ext2fs_file, ext2fs_pos, len, buf);
+	ext2fs_pos += status;
 	return status;
+}
+
+int ext2fs_seek(int pos)
+{
+	if (ext2fs_root == NULL)
+		return 1;
+
+	if (ext2fs_file == NULL)
+		return 1;
+
+	if (pos >= 0 && pos <= ext2fs_len)
+		ext2fs_pos = pos;
+
+	return 0;
+}
+
+int ext2fs_gets(char* buf, int bufsize)
+{
+	char* chr = strchr(gets_buffer_ptr, '\n');
+	int l, ret, acc;
+
+	acc = 0;
+	buf[0] = '\0';
+
+	while (!chr)
+	{
+		l = strlen(gets_buffer_ptr);
+
+		if (l >= (bufsize - 1))
+		{
+			strncpy(&(buf[acc]), gets_buffer_ptr, (bufsize - 1));
+			buf[acc + (bufsize - 1)] = '\0';
+			gets_buffer_ptr += (bufsize - 1);
+			return acc + (bufsize - 1);
+		}
+		else if (l != 0)
+		{
+			strncpy(&(buf[acc]), gets_buffer_ptr, l);
+			buf[acc + l] = '\0';
+			bufsize -= l;
+			acc += l;
+		}
+
+		ret = ext2fs_read(gets_buffer, ARRAY_SIZE(gets_buffer) - 1);
+		gets_buffer[ret] = '\0';
+		gets_buffer_ptr = gets_buffer;
+
+		if (ret == 0)
+		{
+			/* EOF, return */
+			return acc;
+		}
+
+		chr = strchr(gets_buffer_ptr, '\n');
+	}
+
+	/* i now is pointing to some '\n' */
+	l = ((int)(chr - gets_buffer_ptr)) / sizeof(char);
+	if (l + 1 >= (bufsize - 1))
+	{
+		strncpy(&(buf[acc]), gets_buffer_ptr, (bufsize - 1));
+		buf[acc + (bufsize - 1)] = '\0';
+		gets_buffer_ptr += (bufsize - 1);
+		return acc + (bufsize - 1);
+	}
+
+	strncpy(&(buf[acc]), gets_buffer_ptr, l + 1);
+	buf[acc + (l + 1)] = '\0';
+	gets_buffer_ptr += l + 1;
+	return acc + (l + 1);
 }
 
 int ext2fs_mount(const char* partition)

@@ -134,7 +134,7 @@ extern enum boot_mode msc_boot_mode;
 int get_key_active(enum key_type key);
 
 /* Wait for key event */
-enum key_type wait_for_key_event();
+enum key_type wait_for_key_event(void);
 
 /* Wait for key event with timeout */
 enum key_type wait_for_key_event_timed(int* timeout);
@@ -147,10 +147,10 @@ int show_menu(struct boot_menu_item* items, int num_items, int initial_selection
  */
 
 /* Read MSC command */
-void msc_cmd_read();
+void msc_cmd_read(void);
 
 /* Write MSC command */
-void msc_cmd_write();
+void msc_cmd_write(void);
 
 /*
  * Booting
