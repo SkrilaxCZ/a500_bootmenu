@@ -400,7 +400,7 @@ void configure_custom_cmdline(char* cmdline, int size)
 	cmdline += len;
 	size -= len;
 
-	snprintf(cmdline, size, "skrilax.bootloader=%s", bootloader_short_id);
+	snprintf(cmdline, size, "skrilax.bootloader=%s ", bootloader_short_id);
 }
 
 /*
