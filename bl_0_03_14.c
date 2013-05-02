@@ -23,10 +23,10 @@
 /*
  * Please note: Entry point of the application occurs when the bootloader
  * is about to check for bootmode (MSC commands).
- * 
+ *
  * Initial key state is already stored. Application is entered every time,
  * and can override boot mode.
- * 
+ *
  * This file contains only functions that are linked to the bootloader binary.
  */
 
@@ -50,7 +50,7 @@
 int NAKED get_gpio(int row, int column)                  { ASM_THUMB_B(0x10C2FC); }
 
 /*
- * Display functions 
+ * Display functions
  */
 
 void NAKED println_display(const char* fmt, ...)         { ASM_THUMB_B(0x10ECB0); }
@@ -97,9 +97,9 @@ void NAKED android_boot_image(const char* bootimg_data, uint32_t bootimg_size, i
  * ===========================================================================
  */
 
-/* 
+/*
  * Standard library:
- * 
+ *
  * You can use your own of course, but these are found in the bootloader.
  * These are defined in linker script
  */
@@ -119,7 +119,7 @@ void NAKED reboot(void* global_handle)
 		"BL      0x11124C\n"
 		"POP     {PC}\n"
 	);
-	
+
 }
 
 int  NAKED check_bootloader_update(void* global_handle)
@@ -152,7 +152,7 @@ void NAKED get_serial_no(uint32_t* serial_no)
 	);
 }
 
-/* 
+/*
  * Fastboot related
  */
 
@@ -181,8 +181,8 @@ void NAKED fastboot_init_unk1()
 	);
 }
 
-int  NAKED fastboot_send(int fastboot_handle, const char *command, uint32_t command_length)    
-{ 
+int  NAKED fastboot_send(int fastboot_handle, const char *command, uint32_t command_length)
+{
 	__asm__
 	(
 		"PUSH    {LR}\n"
@@ -196,8 +196,8 @@ int  NAKED fastboot_send(int fastboot_handle, const char *command, uint32_t comm
 	);
 }
 
-int  NAKED fastboot_recv0(int fastboot_handle, char* cmd_buffer, uint32_t buffer_length, uint32_t* cmd_length)    
-{ 
+int  NAKED fastboot_recv0(int fastboot_handle, char* cmd_buffer, uint32_t buffer_length, uint32_t* cmd_length)
+{
 	__asm__
 	(
 		"PUSH    {R4,LR}\n"
@@ -210,8 +210,8 @@ int  NAKED fastboot_recv0(int fastboot_handle, char* cmd_buffer, uint32_t buffer
 	);
 }
 
-int  NAKED fastboot_recv5(int fastboot_handle, char* cmd_buffer, uint32_t buffer_length, uint32_t* cmd_length)    
-{ 
+int  NAKED fastboot_recv5(int fastboot_handle, char* cmd_buffer, uint32_t buffer_length, uint32_t* cmd_length)
+{
 	__asm__
 	(
 		"PUSH    {R4,LR}\n"

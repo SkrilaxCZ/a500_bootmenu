@@ -1,6 +1,6 @@
-/* 
+/*
  * Acer bootloader boot menu application GUI
- * 
+ *
  * Copyright (C) 2012 Skrilax_CZ
  *
  * This program is free software; you can redistribute it and/or modify
@@ -44,9 +44,9 @@ uint32_t clr2int(struct color clr);
 /* int to color */
 struct color int2clr (uint32_t u);
 
-/* Initial text colors: 
+/* Initial text colors:
  * Use colorcodes:
- * - 0x1B + R + G + B (range 01 - FF) to change color code of the text 
+ * - 0x1B + R + G + B (range 01 - FF) to change color code of the text
  * - 0x1C + R + G + B (range 01 - FF) to change color code of the background
  * - 0x1D transparent background
  */
@@ -107,7 +107,7 @@ void fb_compat_println_error(const char* fmt, ...);
 const char* fb_text_color_code(uint8_t r, uint8_t g, uint8_t b);
 const char* fb_text_color_code2(const struct color* c);
 
-/* 
+/*
  * Text outline color code
  */
 const char* fb_text_outline_color_code(uint8_t r, uint8_t g, uint8_t b);

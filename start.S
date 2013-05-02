@@ -1,6 +1,6 @@
-/* 
+/*
  * Acer bootloader boot menu application start file.
- * 
+ *
  * Copyright 2012 (C) Skrilax_CZ
  *
  * This program is free software; you can redistribute it and/or modify
@@ -32,19 +32,19 @@
 #Jumptable
 .align(2)
 _main:
-	b.w    main 
+	b.w    main
 
 .align(2)
 _fb_compat_println:
-	b.w    fb_compat_println 
+	b.w    fb_compat_println
 
 .align(2)
 _fb_compat_println_error:
-	b.w    fb_compat_println_error 
+	b.w    fb_compat_println_error
 
 .align(2)
 _configure_custom_cmdline:
-	b.w    configure_custom_cmdline 
+	b.w    configure_custom_cmdline
 
 .arm
 

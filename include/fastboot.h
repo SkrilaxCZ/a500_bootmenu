@@ -1,6 +1,6 @@
-/* 
+/*
  * Acer bootloader boot menu application fastboot handler
- * 
+ *
  * Copyright (C) 2012 Skrilax_CZ
  *
  * This program is free software; you can redistribute it and/or modify

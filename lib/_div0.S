@@ -1,4 +1,4 @@
- 
+
 .arm
 
 .text
@@ -7,4 +7,3 @@
 @Do noting
 __div0:
   mov pc, lr
- 

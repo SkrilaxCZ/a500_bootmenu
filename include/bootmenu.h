@@ -1,6 +1,6 @@
-/* 
+/*
  * Acer bootloader boot menu application main header.
- * 
+ *
  * Copyright (C) 2012 Skrilax_CZ
  *
  * This program is free software; you can redistribute it and/or modify
@@ -34,13 +34,13 @@ struct msc_command
 	 * see MSC_CMD_ defines
 	 */
 	char boot_command[0x0C];
-	
+
 	/* Debug mode:
 	 * 00 - off
 	 * 01 - on
 	 */
 	unsigned char debug_mode;
-	
+
 	/* Boot image:
 	 * 00 - LNX
 	 * 01 - AKB
@@ -48,10 +48,10 @@ struct msc_command
 	 * 03 - second item parsed from boot file
 	 */
 	unsigned char boot_image;
-	
+
 	/* Erase cache on boot */
 	unsigned char erase_cache;
-	
+
 	/* Path to the boot file in BL format:
 	 * Example: UBN:/boot/menu.lst
 	 */
@@ -63,16 +63,16 @@ enum boot_mode
 {
 	/* Normal */
 	BM_NORMAL,
-	
+
 	/* Recovery */
 	BM_RECOVERY,
-	
+
 	/* Factory Reset */
 	BM_FCTRY_RESET,
-	
+
 	/* Fastboot */
 	BM_FASTBOOT,
-	
+
 	/* Bootmenu */
 	BM_BOOTMENU
 };
@@ -124,7 +124,7 @@ extern struct msc_command msc_cmd;
 
 /* Current boot modes */
 extern enum boot_mode this_boot_mode;
-extern enum boot_mode msc_boot_mode; 
+extern enum boot_mode msc_boot_mode;
 
 /*
  * Key handling

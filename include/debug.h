@@ -18,13 +18,13 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
- 
+
 #ifndef DEBUG_H
 #define DEBUG_H
 
 /* debug text */
 extern char debug_text[16384];
- 
+
 /* start pointer */
 extern char* debug_start_ptr;
 
@@ -33,5 +33,5 @@ extern char* debug_end_ptr;
 
 /* write debug info */
 void debug_write(const char* text);
- 
+
 #endif //!DEBUG_H

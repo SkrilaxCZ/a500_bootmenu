@@ -1,6 +1,6 @@
-/* 
+/*
  * Acer bootloader gui defines taken from Android Recovery.
- * 
+ *
  * Copyright (C) 2012 Skrilax_CZ
  *
  * This program is free software; you can redistribute it and/or modify
@@ -38,14 +38,14 @@ struct bootloader_skin
 {
 	/* Magic ID */
 	char              magic[4];
-	
+
 	/* Colors */
 	struct font_color title_color;
 	struct font_color text_color;
 	struct font_color error_text_color;
 	struct color      highlight_color;
 	struct font_color highlight_text_color;
-	
+
 	/* Outlining */
 	int               font_outline;
 	int               font_kerning;
@@ -72,19 +72,19 @@ struct bootloader_skin
 #define BOOTLOGO_OFFSET                  0x1A5000
 #define BOOTLOGO_SIZE_LIMIT              0x32000
 
-inline int outlined_font_height(struct font_data* f) 
-{ 
-	return f->font_height + 2*f->font_outline; 
+inline int outlined_font_height(struct font_data* f)
+{
+	return f->font_height + 2*f->font_outline;
 }
 
-inline int outlined_font_width(struct font_data* f)  
+inline int outlined_font_width(struct font_data* f)
 {
 	return f->font_width + 2*f->font_outline;
 }
 
 inline int font_data_size(struct font_data* f)
-{ 
-	return outlined_font_width(f) * outlined_font_height(f) * NUM_CHARS * sizeof(struct color); 
+{
+	return outlined_font_width(f) * outlined_font_height(f) * NUM_CHARS * sizeof(struct color);
 }
 
 #endif //!SKIN_H

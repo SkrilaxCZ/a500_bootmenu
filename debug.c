@@ -1,6 +1,6 @@
-/* 
+/*
  * Acer bootloader boot menu application main file.
- * 
+ *
  * Copyright (C) 2012 Skrilax_CZ
  *
  * This program is free software; you can redistribute it and/or modify
@@ -22,7 +22,7 @@
 /* This is compiled in ARM mode unlike the rest.
  * It is a circular buffer to which vprintf stores.
  */
- 
+
 #include <stddef.h>
 #include <stdarg.h>
 #include <bl_0_03_14.h>
@@ -47,21 +47,21 @@ char* debug_end_ptr = debug_text;
 void debug_write(const char* text)
 {
 	int len, space;
-	
+
 	len = strlen(text);
 	space = ((unsigned int)debug_text_end - (unsigned int)debug_end_ptr);
-	
+
 	if (len > space)
 	{
 		memcpy(debug_end_ptr, text, space);
-		
+
 		text += space;
 		len -= space;
 		debug_end_ptr = debug_text;
-		
+
 		if (len > ARRAY_SIZE(debug_text) - 1)
 			len = ARRAY_SIZE(debug_text) - 1;
-		
+
 		memcpy(debug_end_ptr, text, len);
 		debug_end_ptr += len;
 		debug_rotating = 1;
@@ -71,9 +71,9 @@ void debug_write(const char* text)
 		memcpy(debug_end_ptr, text, len);
 		debug_end_ptr += len;
 	}
-	
+
 	*debug_end_ptr = '\0';
-	
+
 	if (debug_rotating)
 	{
 		if (debug_end_ptr == debug_text_end)
