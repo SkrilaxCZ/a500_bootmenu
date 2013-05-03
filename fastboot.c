@@ -90,12 +90,14 @@ inline int fastboot_cmd_status(int status) { return status != 0 && status != 5; 
 void fastboot_get_var_bootloader_id(char* reply_buffer, int reply_buffer_size)
 {
 	strncpy(reply_buffer, bootloader_id, reply_buffer_size);
+	reply_buffer[reply_buffer_size - 1] = '\0';
 }
 
 /* Bootloader version */
 void fastboot_get_var_bootloader_version(char* reply_buffer, int reply_buffer_size)
 {
 	strncpy(reply_buffer, bootloader_version, reply_buffer_size);
+	reply_buffer[reply_buffer_size - 1] = '\0';
 }
 
 /* Baseband version */
@@ -116,7 +118,7 @@ void fastboot_get_var_android_version(char* reply_buffer, int reply_buffer_size)
 		return;
 
 	/* Open build.prop file */
-	if (ext2fs_open("/build.prop") == -1)
+	if (ext2fs_open("/build.prop") < 0)
 		goto fail;
 
 	len = strlen(ANDROID_VERSION_PROP_NAME "=");
@@ -137,6 +139,7 @@ void fastboot_get_var_android_version(char* reply_buffer, int reply_buffer_size)
 				*chr = '\0';
 
 			strncpy(reply_buffer, ptr, reply_buffer_size);
+			reply_buffer[reply_buffer_size - 1] = '\0';
 			break;
 		}
 	}
@@ -151,18 +154,21 @@ fail:
 void fastboot_get_var_version(char* reply_buffer, int reply_buffer_size)
 {
 	strncpy(reply_buffer, FASTBOOT_VERSION, reply_buffer_size);
+	reply_buffer[reply_buffer_size - 1] = '\0';
 }
 
 /* Secure */
 void fastboot_get_var_secure(char* reply_buffer, int reply_buffer_size)
 {
 	strncpy(reply_buffer, FASTBOOT_SECURE, reply_buffer_size);
+	reply_buffer[reply_buffer_size - 1] = '\0';
 }
 
 /* Mid */
 void fastboot_get_var_mid(char* reply_buffer, int reply_buffer_size)
 {
 	strncpy(reply_buffer, FASTBOOT_MID, reply_buffer_size);
+	reply_buffer[reply_buffer_size - 1] = '\0';
 }
 
 /* Get serial number */
@@ -189,6 +195,7 @@ void fastboot_get_var_wifi_only(char* reply_buffer, int reply_buffer_size)
 		repl = "no";
 
 	strncpy(reply_buffer, repl, reply_buffer_size);
+	reply_buffer[reply_buffer_size - 1] = '\0';
 }
 
 /* Boot partition (id) */
@@ -213,6 +220,7 @@ void fastboot_get_var_boot_image_name(char* reply_buffer, int reply_buffer_size)
 		repl = menu_items[msc_cmd.boot_image].title;
 
 	strncpy(reply_buffer, repl, reply_buffer_size);
+	reply_buffer[reply_buffer_size - 1] = '\0';
 }
 
 /* Debug mode */
@@ -226,6 +234,7 @@ void fastboot_get_var_debug_mode(char* reply_buffer, int reply_buffer_size)
 		repl = "ON";
 
 	strncpy(reply_buffer, repl, reply_buffer_size);
+	reply_buffer[reply_buffer_size - 1] = '\0';
 }
 
 /* Product */
@@ -239,6 +248,7 @@ void fastboot_get_var_product(char* reply_buffer, int reply_buffer_size)
 		repl = "a501_ww_gen1";
 
 	strncpy(reply_buffer, repl, reply_buffer_size);
+	reply_buffer[reply_buffer_size - 1] = '\0';
 }
 
 /* List of fastboot variables */
@@ -281,11 +291,11 @@ struct fastboot_get_var_list_item fastboot_variable_table[] =
 		.var_handler = &fastboot_get_var_wifi_only,
 	},
 	{
-		.var_name = "boot_image_id",
+		.var_name = "boot-image-id",
 		.var_handler = fastboot_get_var_boot_image_id,
 	},
 	{
-		.var_name = "boot_image_name",
+		.var_name = "boot-image-name",
 		.var_handler = fastboot_get_var_boot_image_name,
 	},
 	{
@@ -388,12 +398,12 @@ int fastboot_oem_cmd_sbk(int fastboot_handle, const char* args)
 int fastboot_oem_cmd_set_boot_image(int fastboot_handle, const char* args)
 {
 	int fastboot_status;
-	const char* info_reply_ok = FASTBOOT_RESP_INFO "Boot partition set to: %d";
+	const char* info_reply_ok = FASTBOOT_RESP_INFO "Boot image set to: %d";
 	const char* info_reply_bad = FASTBOOT_RESP_INFO "Invalid boot partition";
 	char ok_reply_buffer[128];
 	long int boot_image;
 
-	if (args == NULL)
+	if (args[0] == '\0')
 	{
 		fastboot_status = fastboot_send(fastboot_handle, info_reply_bad, strlen(info_reply_bad));
 		return fastboot_cmd_status(fastboot_status);
@@ -415,6 +425,37 @@ int fastboot_oem_cmd_set_boot_image(int fastboot_handle, const char* args)
 	return fastboot_cmd_status(fastboot_status);
 }
 
+/* Menu file */
+int fastboot_oem_cmd_set_boot_file(int fastboot_handle, const char* args)
+{
+	int fastboot_status;
+	const char* info_reply_ok = FASTBOOT_RESP_INFO "Boot image menu file: %s";
+	const char* info_reply_bad = FASTBOOT_RESP_INFO "Invalid boot image menu file";
+	char* ptr;
+	char ok_reply_buffer[512];
+
+	if (args[0] == '\0' || strlen(args) >= ARRAY_SIZE(msc_cmd.boot_file))
+	{
+		fastboot_status = fastboot_send(fastboot_handle, info_reply_bad, strlen(info_reply_bad));
+		return fastboot_cmd_status(fastboot_status);
+	}
+
+	ptr = strchr(args, ':');
+	if (!ptr || ((int)(ptr - args)) > 4)
+	{
+		fastboot_status = fastboot_send(fastboot_handle, info_reply_bad, strlen(info_reply_bad));
+		return fastboot_cmd_status(fastboot_status);
+	}
+
+	strncpy(msc_cmd.boot_file, args, ARRAY_SIZE(msc_cmd.boot_file));
+	msc_cmd.boot_file[ARRAY_SIZE(msc_cmd.boot_file) - 1] = '\0';
+	msc_cmd_write();
+
+	snprintf(ok_reply_buffer, ARRAY_SIZE(ok_reply_buffer), info_reply_ok, msc_cmd.boot_file);
+	fastboot_status = fastboot_send(fastboot_handle, ok_reply_buffer, strlen(ok_reply_buffer));
+	return fastboot_cmd_status(fastboot_status);
+}
+
 /* Debug ON/OFF */
 int fastboot_oem_cmd_debug_mode(int fastboot_handle, const char* args)
 {
@@ -424,14 +465,14 @@ int fastboot_oem_cmd_debug_mode(int fastboot_handle, const char* args)
 	const char* info_reply_bad = FASTBOOT_RESP_INFO "Invalid debug mode";
 	const char* reply;
 
-	if (!strncmp(args, "on", strlen("on")))
+	if (!strcmp(args, "on"))
 	{
 		msc_cmd.debug_mode = 1;
 		msc_cmd_write();
 
 		reply = info_reply_on;
 	}
-	else if (!strncmp(args, "off", strlen("off")))
+	else if (!strcmp(args, "off"))
 	{
 		msc_cmd.debug_mode = 0;
 		msc_cmd_write();
@@ -481,7 +522,7 @@ int fastboot_oem_cmd_oem_bldebug_dump(int fastboot_handle, const char* args)
 	const char* header_a = FASTBOOT_RESP_INFO "            00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f";
 	const char* header_b = FASTBOOT_RESP_INFO " --------   -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --";
 
-	if (!strncmp(args, "0x", strlen("0x")) || !strncmp(args, "0X", strlen("0X")))
+	if (!strncmp(args, "0x", 2) || !strncmp(args, "0X", 2))
 		args += 2;
 
 	address = strtol(args, &endp, 16);
@@ -499,7 +540,7 @@ int fastboot_oem_cmd_oem_bldebug_dump(int fastboot_handle, const char* args)
 			snprintf(reply, ARRAY_SIZE(reply), FASTBOOT_RESP_INFO "Missing length!");
 		else
 		{
-			if (!strncmp(endp, "0x", strlen("0x")) || !strncmp(endp, "0X", strlen("0X")))
+			if (!strncmp(endp, "0x", 2) || !strncmp(endp, "0X", 2))
 				endp += 2;
 
 			length = strtol(endp, NULL, 16);
@@ -599,7 +640,7 @@ int fastboot_oem_cmd_oem_bldebug_get(int fastboot_handle, const char* args)
 	unsigned int value;
 	char reply[0x100];
 
-	if (!strncmp(args, "0x", strlen("0x")) || !strncmp(args, "0X", strlen("0X")))
+	if (!strncmp(args, "0x", 2) || !strncmp(args, "0X", 2))
 		args += 2;
 
 	address = strtol(args, NULL, 16);
@@ -626,7 +667,7 @@ int fastboot_oem_cmd_oem_bldebug_set(int fastboot_handle, const char* args)
 	char reply[0x100];
 	char* endp;
 
-	if (!strncmp(args, "0x", strlen("0x")) || !strncmp(args, "0X", strlen("0X")))
+	if (!strncmp(args, "0x", 2) || !strncmp(args, "0X", 2))
 		args += 2;
 
 	address = strtol(args, &endp, 16);
@@ -644,7 +685,7 @@ int fastboot_oem_cmd_oem_bldebug_set(int fastboot_handle, const char* args)
 			snprintf(reply, ARRAY_SIZE(reply), FASTBOOT_RESP_INFO "Missing value!");
 		else
 		{
-			if (!strncmp(endp, "0x", strlen("0x")) || !strncmp(endp, "0X", strlen("0X")))
+			if (!strncmp(endp, "0x", 2) || !strncmp(endp, "0X", 2))
 				endp += 2;
 
 			value = strtol(endp, NULL, 16);
@@ -747,6 +788,10 @@ struct fastboot_oem_cmd_list_item fastboot_oem_command_table[] =
 		.cmd_handler = &fastboot_oem_cmd_set_boot_image,
 	},
 	{
+		.cmd_name = "setmenu",
+		.cmd_handler = &fastboot_oem_cmd_set_boot_file,
+	},
+	{
 		.cmd_name = "debug",
 		.cmd_handler = &fastboot_oem_cmd_debug_mode,
 	},
@@ -829,7 +874,7 @@ const char* fastboot_get_partition(const char* partition)
 
 	for (i = 0; i < ARRAY_SIZE(fastboot_partitions); i++)
 	{
-		if (!strncmp(partition, fastboot_partitions[i].fastboot_id, strlen(fastboot_partitions[i].fastboot_id)))
+		if (!strcmp(partition, fastboot_partitions[i].fastboot_id))
 			return fastboot_partitions[i].partition_id;
 	}
 
@@ -1004,7 +1049,7 @@ void fastboot_main(void* global_handle, int boot_handle, char* error_msg, int er
 					goto error;
 				}
 
-				if (!strncmp(partition, "EBT", strlen("EBT")))
+				if (!strcmp(partition, "EBT"))
 				{
 					partition = "CAC";
 					bootloader_flash = 1;
@@ -1150,7 +1195,7 @@ void fastboot_main(void* global_handle, int boot_handle, char* error_msg, int er
 
 				partition = fastboot_get_partition(cmd_pointer);
 
-				if (!strncmp(partition, "EBT", strlen("EBT")))
+				if (!strcmp(partition, "EBT"))
 				{
 					/* Don't refresh here, let it do the error report */
 					fb_printf("Erasing bootloader is not supported.\n\n");
@@ -1190,12 +1235,13 @@ void fastboot_main(void* global_handle, int boot_handle, char* error_msg, int er
 
 				/* Prepare default reply */
 				strncpy(reply_buffer, FASTBOOT_RESP_OK, strlen(FASTBOOT_RESP_OK));
+				reply_buffer[ARRAY_SIZE(reply_buffer) - 1] = '\0';
 				reply_pointer = reply_buffer + strlen(FASTBOOT_RESP_OK);
 
 				/* Append reply */
 				for (i = 0; i < ARRAY_SIZE(fastboot_variable_table); i++)
 				{
-					if (!strncmp(cmd_pointer, fastboot_variable_table[i].var_name, strlen(fastboot_variable_table[i].var_name)))
+					if (!strcmp(cmd_pointer, fastboot_variable_table[i].var_name))
 					{
 						fastboot_variable_table[i].var_handler(reply_pointer, ARRAY_SIZE(reply_buffer) - strlen(FASTBOOT_RESP_OK));
 						break;
@@ -1293,7 +1339,8 @@ void fastboot_main(void* global_handle, int boot_handle, char* error_msg, int er
 						boot_interactively(msc_cmd.boot_image, NULL, NULL, boot_handle, NULL, 0);
 
 					/* Booting returned - back to bootmenu */
-					strncpy(error_msg, "Booting kernel image from fastboot failed.", error_msg_size);
+					strncpy(error_msg, "ERROR: Booting kernel image from fastboot failed.", error_msg_size);
+					error_msg[error_msg_size - 1] = '\0';
 					return;
 				}
 			}

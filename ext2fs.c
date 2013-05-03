@@ -210,7 +210,6 @@ typedef struct ext4_extent_header* ext4_extent_header_t;
 static struct ext2_data* ext2fs_root = NULL;
 static ext2fs_node_t ext2fs_file = NULL;
 static int ext2fs_pos = 0;
-static int ext2fs_len = 0;
 static int symlinknest = 0;
 static unsigned int inode_size;
 static int ext_pt_handle = -1;
@@ -460,9 +459,12 @@ int ext2fs_read_file(ext2fs_node_t node, int pos, unsigned int len, char* buf)
 	int blocksize = 1 << (log2blocksize + DISK_SECTOR_BITS);
 	unsigned int filesize = __le32_to_cpu(node->inode.size);
 
-	/* Adjust len so it we can't read past the end of the file.  */
-	if (len > filesize)
-		len = filesize;
+	/* Adjust len so it we can't read past the end of the file. */
+	if (pos + len > filesize)
+		len = filesize - pos;
+
+	if (len == 0)
+		return 0;
 
 	blockcnt = ((len + pos) + blocksize - 1) / blocksize;
 
@@ -639,7 +641,10 @@ static char* ext2fs_read_symlink(ext2fs_node_t node)
 	   60 the symlink is stored in a separate block,
 	   otherwise it is stored in the inode.  */
 	if (__le32_to_cpu(diro->inode.size) <= 60)
+	{
 		strncpy(symlink, diro->inode.b.symlink, __le32_to_cpu(diro->inode.size));
+		symlink[__le32_to_cpu(diro->inode.size) - 1] = '\0';
+	}
 	else
 	{
 		status = ext2fs_read_file(diro, 0, __le32_to_cpu(diro->inode.size), symlink);
@@ -664,7 +669,8 @@ int ext2fs_find_file1(const char* currpath, ext2fs_node_t currroot, ext2fs_node_
 	ext2fs_node_t currnode = currroot;
 	ext2fs_node_t oldnode = currroot;
 
-	strncpy(fpath, currpath, strlen(currpath) + 1);
+	strncpy(fpath, currpath, ARRAY_SIZE(fpath));
+	fpath[ARRAY_SIZE(fpath) - 1] ='\0';
 
 	/* Remove all leading slashes.  */
 	while (*name == '/')
@@ -807,7 +813,6 @@ int ext2fs_ls(const char* dirname)
 	return 0;
 }
 
-
 int ext2fs_open(const char* filename)
 {
 	ext2fs_node_t fdiro = NULL;
@@ -831,7 +836,6 @@ int ext2fs_open(const char* filename)
 
 	len = __le32_to_cpu(fdiro->inode.size);
 	ext2fs_file = fdiro;
-	ext2fs_len = len;
 	ext2fs_pos = 0;
 	gets_buffer[0] = '\0';
 	gets_buffer_ptr = gets_buffer;
@@ -882,7 +886,7 @@ int ext2fs_seek(int pos)
 	if (ext2fs_file == NULL)
 		return 1;
 
-	if (pos >= 0 && pos <= ext2fs_len)
+	if (pos >= 0 && pos <= __le32_to_cpu(ext2fs_file->inode.size))
 		ext2fs_pos = pos;
 
 	return 0;
@@ -916,12 +920,17 @@ int ext2fs_gets(char* buf, int bufsize)
 		}
 
 		ret = ext2fs_read(gets_buffer, ARRAY_SIZE(gets_buffer) - 1);
-		gets_buffer[ret] = '\0';
-		gets_buffer_ptr = gets_buffer;
 
-		if (ret <= 0)
+		if (ret > 0)
+		{
+			gets_buffer[ret] = '\0';
+			gets_buffer_ptr = gets_buffer;
+		}
+		else
 		{
 			/* EOF, return */
+			gets_buffer[0] = '\0';
+			gets_buffer_ptr = gets_buffer;
 			return acc;
 		}
 

@@ -483,6 +483,7 @@ void fb_init()
 void fb_set_title(const char* title_msg)
 {
 	strncpy(title, title_msg, ARRAY_SIZE(title));
+	title[ARRAY_SIZE(title) - 1] = '\0';
 }
 
 /*
@@ -491,6 +492,7 @@ void fb_set_title(const char* title_msg)
 void fb_set_status(const char* status_msg)
 {
 	strncpy(status, status_msg, ARRAY_SIZE(status));
+	status[ARRAY_SIZE(status) - 1] = '\0';
 }
 
 /*

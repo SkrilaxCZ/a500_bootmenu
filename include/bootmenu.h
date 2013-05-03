@@ -55,7 +55,7 @@ struct msc_command
 	/* Path to the boot file in BL format:
 	 * Example: UBN:/boot/menu.lst
 	 */
-	unsigned char boot_file[256];
+	char boot_file[256];
 };
 
 /* How to boot */
@@ -91,6 +91,7 @@ struct boot_selection_item
 	char path_android[256];
 	char path_zImage[256];
 	char path_ramdisk[256];
+	char title[256];
 	char cmdline[512];
 };
 
