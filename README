@@ -1,1 +1,70 @@
-Bootmenu application for A500 patched ICS bootloader 
+Bootmenu application for A500 patched ICS bootloader featuring booting from EXT4FS and extended fastboot commands.
+
+================================================================================
+Fastboot oem commands:
+================================================================================
+
+fastboot oem sbk
+- displays your sbk on the screen
+
+fastboot oem setboot %d
+- sets default boot image (0 - LNX partition, 1 - second entry ...)
+
+fastboot oem setmenu %s
+- sets the path to menu.lst file in BL format (see below)
+
+fastboot oem debug on|off
+- toggles debug on or off in cmdline
+
+fastboot oem lock
+- ...
+
+fastboot oem unlock
+- yep, it's already unlocked
+
+================================================================================
+Bootloader path format:
+================================================================================
+The structure is "PARTITION:path_in_filesystem". PARTITION is three letters, this is the usual layout:
+
+SOS     mmcblk0p1     recovery
+LNX     mmcblk0p2     boot
+APP     mmcblk0p3     system
+CAC     mmcblk0p4     cache
+MSC     mmcblk0p5     misc
+FLX     mmcblk0p6     flexrom
+AKB     mmcblk0p7     secboot
+UDA     mmcblk0p8     userdata
+
+(for my own repartition purposes, I've also added UBN for ubuntu, fastboot flashes that with "linux").
+If you want to specify a file as /system/boot/menu.lst from Android, BL format would be APP:/boot/menu.lst.
+
+================================================================================
+Example menu.lst file:
+================================================================================
+; commentary is prefixed with ';'
+; .ini file structure
+
+; First, two possibilities to boot from partitions
+
+; LNX - primary image (always present, can specify title only)
+[LNX]
+title=Android
+
+; AKB - secondary image (will not show if property 'suspend=1' (should AKB be used as EXT4 etc.), can specify title only)
+[AKB]
+title=LUbuntu
+;suspend=1
+
+; First EXT4FS entry - two properies
+; title
+; android - path to android image in BL format (see above)
+[BOOT1]
+title=EXT4FS Boot 1
+android=UBN:/boot/boot1.img
+
+; Second entry
+[BOOT2]
+title=EXT4FS Boot 2
+android=UBN:/boot/boot2.img
+================================================================================
