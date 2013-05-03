@@ -641,7 +641,7 @@ int load_boot_images(struct boot_selection_item* boot_items, struct boot_menu_it
 	}
 
 	/* Push it if we have something */
-	if (boot_current.title[0] != '\0' && strcmp(boot_current.partition, "LNX") && strcmp(boot_current.partition, "AKB"))
+	if (section[0] != '\0' && strcmp(section, "LNX") && strcmp(section, "AKB"))
 	{
 		memcpy(&boot_items[num_items], &boot_current, sizeof(struct boot_selection_item));
 		memcpy(&menu_items[num_items], &menu_current, sizeof(struct boot_menu_item));
@@ -768,7 +768,7 @@ void boot_normal(struct boot_selection_item* item, const char* status, int boot_
 
 	if (item->partition[0] != '\0')
 	{
-		fb_printf("Booting android image from partition %s ...\n", item->partition);
+		fb_printf("Booting android image from %s partition ...\n", item->partition);
 		fb_refresh();
 
 		boot_android_image_from_partition(item->partition, boot_handle);
@@ -835,7 +835,7 @@ void boot_normal(struct boot_selection_item* item, const char* status, int boot_
 	bootmenu_basic_frame();
 
 	fb_set_status(status);
-	fb_printf("Booting android image from partition %s ...\n", partition);
+	fb_printf("Booting android image from %s partition ...\n", partition);
 	fb_refresh();
 
 	boot_android_image_from_partition(partition, boot_handle);
