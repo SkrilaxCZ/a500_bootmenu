@@ -215,7 +215,7 @@ static int symlinknest = 0;
 static unsigned int inode_size;
 static int ext_pt_handle = -1;
 static uint64_t pt_size;
-static char gets_buffer[16];
+static char gets_buffer[1024];
 static char* gets_buffer_ptr = gets_buffer;
 
 static int ext2fs_devread(uint64_t sector, int byte_offset, int byte_len, char *buf)
@@ -832,6 +832,9 @@ int ext2fs_open(const char* filename)
 	len = __le32_to_cpu(fdiro->inode.size);
 	ext2fs_file = fdiro;
 	ext2fs_len = len;
+	ext2fs_pos = 0;
+	gets_buffer[0] = '\0';
+	gets_buffer_ptr = gets_buffer;
 	return len;
 
 fail:
@@ -916,7 +919,7 @@ int ext2fs_gets(char* buf, int bufsize)
 		gets_buffer[ret] = '\0';
 		gets_buffer_ptr = gets_buffer;
 
-		if (ret == 0)
+		if (ret <= 0)
 		{
 			/* EOF, return */
 			return acc;
