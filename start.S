@@ -23,11 +23,11 @@
 .thumb
 .syntax unified
 
-.globl _main
-.globl _fb_compat_println
-.globl _fb_compat_println_error
-.globl _configure_custom_cmdline
-.globl _debug_write
+.global _main
+.global _fb_compat_println
+.global _fb_compat_println_error
+.global _configure_custom_cmdline
+.global _debug_write
 
 #Jumptable
 .align(2)
