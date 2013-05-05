@@ -136,7 +136,7 @@ void reboot(void* global_handle);
 int android_load_image(char** bootimg_data_ptr, uint32_t* bootimg_size, const char* partition);
 
 /* Boots Android image, returns in case of error */
-void android_boot_image(const char* bootimg_data, uint32_t bootimg_size, int boot_handle);
+void android_boot_image(const char* bootimg_data, uint32_t bootimg_size, uint32_t ram_base);
 
 /*
  * Fastboot

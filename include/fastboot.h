@@ -23,6 +23,6 @@
 #define FASTBOOT_H
 
 /* Enter fastboot */
-void fastboot_main(void* global_handle, int boot_handle, char* error_msg, int error_msg_size);
+void fastboot_main(void* global_handle, uint32_t ram_base, char* error_msg, int error_msg_size);
 
 #endif //!FASTBOOT_H

@@ -161,22 +161,22 @@ void msc_cmd_write(void);
 int load_boot_images(struct boot_selection_item* boot_items, struct boot_menu_item* menu_items, int max_items);
 
 /* Show interactive boot selection */
-void boot_interactively(int initial_selection, const char* message, const char* error, int boot_handle, char* error_message, int error_message_size);
+void boot_interactively(int initial_selection, const char* message, const char* error, uint32_t ram_base, char* error_message, int error_message_size);
 
 /* Set default boot image interactivey*/
 void set_default_boot_image(int initial_selection);
 
 /* Boot android image from partition */
-void boot_android_image_from_partition(const char* partition, int boot_handle);
+void boot_android_image_from_partition(const char* partition, uint32_t ram_base);
 
 /* Boots normally (shows interactive boot screen) */
-void boot_normal(struct boot_selection_item* item, const char* status, int boot_handle);
+void boot_normal(struct boot_selection_item* item, const char* status, uint32_t ram_base);
 
 /* Boot from partition and update screen */
-void boot_partition(const char* partition, const char* status, int boot_handle);
+void boot_partition(const char* partition, const char* status, uint32_t ram_base);
 
 /* Boots recovery */
-void boot_recovery(int boot_handle);
+void boot_recovery(uint32_t ram_base);
 
 /* Bootmenu new frame */
 void bootmenu_new_frame(void);

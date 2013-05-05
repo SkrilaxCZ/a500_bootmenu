@@ -660,7 +660,7 @@ fail_open:
 /*
  * Show interactive boot selection
  */
-void boot_interactively(int initial_selection, const char* message, const char* error, int boot_handle, char* error_message, int error_message_size)
+void boot_interactively(int initial_selection, const char* message, const char* error, uint32_t ram_base, char* error_message, int error_message_size)
 {
 	struct boot_selection_item boot_items[20];
 	struct boot_menu_item menu_items[20];
@@ -690,7 +690,7 @@ void boot_interactively(int initial_selection, const char* message, const char* 
 			error_message[error_message_size - 1] = '\0';
 		}
 
-		boot_normal(&boot_items[0], boot_status, boot_handle);
+		boot_normal(&boot_items[0], boot_status, ram_base);
 		return;
 	}
 
@@ -731,13 +731,13 @@ void boot_interactively(int initial_selection, const char* message, const char* 
 		}
 	}
 
-	boot_normal(&boot_items[selected_item], boot_status, boot_handle);
+	boot_normal(&boot_items[selected_item], boot_status, ram_base);
 }
 
 /*
  * Boots Android image (returns on ERROR)
  */
-void boot_android_image_from_partition(const char* partition, int boot_handle)
+void boot_android_image_from_partition(const char* partition, uint32_t ram_base)
 {
 	char* bootimg_data = NULL;
 	uint32_t bootimg_size = 0;
@@ -748,13 +748,13 @@ void boot_android_image_from_partition(const char* partition, int boot_handle)
 	if (!*(bootimg_data))
 		return;
 
-	android_boot_image(bootimg_data, bootimg_size, boot_handle);
+	android_boot_image(bootimg_data, bootimg_size, ram_base);
 }
 
 /*
  * Boots normally (returns on ERROR)
  */
-void boot_normal(struct boot_selection_item* item, const char* status, int boot_handle)
+void boot_normal(struct boot_selection_item* item, const char* status, uint32_t ram_base)
 {
 	int len;
 	char boot_file_partition[8];
@@ -771,7 +771,7 @@ void boot_normal(struct boot_selection_item* item, const char* status, int boot_
 		fb_printf("Booting android image from %s partition ...\n", item->partition);
 		fb_refresh();
 
-		boot_android_image_from_partition(item->partition, boot_handle);
+		boot_android_image_from_partition(item->partition, ram_base);
 	}
 	else if (item->path_android[0] != '\0')
 	{
@@ -822,14 +822,14 @@ void boot_normal(struct boot_selection_item* item, const char* status, int boot_
 		fb_printf(" OK\n", item->partition);
 		fb_printf("Booting ...", item->partition);
 		fb_refresh();
-		android_boot_image(bootimg, len, boot_handle);
+		android_boot_image(bootimg, len, ram_base);
 	}
 }
 
 /*
  * Boots from specified partition (used for boots for failures in ext4)
  */
- void boot_partition(const char* partition, const char* status, int boot_handle)
+ void boot_partition(const char* partition, const char* status, uint32_t ram_base)
 {
 	/* Normal mode frame */
 	bootmenu_basic_frame();
@@ -838,13 +838,13 @@ void boot_normal(struct boot_selection_item* item, const char* status, int boot_
 	fb_printf("Booting android image from %s partition ...\n", partition);
 	fb_refresh();
 
-	boot_android_image_from_partition(partition, boot_handle);
+	boot_android_image_from_partition(partition, ram_base);
 }
 
 /*
  * Boots to recovery
  */
-void boot_recovery(int boot_handle)
+void boot_recovery(uint32_t ram_base)
 {
 	/* Normal mode frame */
 	bootmenu_basic_frame();
@@ -852,7 +852,7 @@ void boot_recovery(int boot_handle)
 	fb_set_status("Booting recovery kernel image");
 	fb_refresh();
 
-	boot_android_image_from_partition("SOS", boot_handle);
+	boot_android_image_from_partition("SOS", ram_base);
 }
 
 /*
@@ -881,9 +881,9 @@ void set_default_boot_image(int initial_selection)
  * - boot partition (primary or secondary) is loaded
  * - can continue boot, and force fastboot or recovery mode
  *
- * boot_handle - pass to boot partition
+ * ram_base
  */
-void main(void* global_handle, int boot_handle)
+void main(void* global_handle, uint32_t ram_base)
 {
 	/* Debug mode status */
 	const char* debug_mode_str;
@@ -967,11 +967,11 @@ void main(void* global_handle, int boot_handle)
 		else
 			error_message_ptr = error_message;
 
-		boot_interactively(msc_cmd.boot_image, debug_mode_str, error_message_ptr, boot_handle, error_message, ARRAY_SIZE(error_message));
+		boot_interactively(msc_cmd.boot_image, debug_mode_str, error_message_ptr, ram_base, error_message, ARRAY_SIZE(error_message));
 	}
 	else if (this_boot_mode == BM_RECOVERY)
 	{
-		boot_recovery(boot_handle);
+		boot_recovery(ram_base);
 		snprintf(error_message, ARRAY_SIZE(error_message), "ERROR: Invalid recovery (SOS) kernel image.");
 	}
 	else if (this_boot_mode == BM_FCTRY_RESET)
@@ -1004,7 +1004,7 @@ void main(void* global_handle, int boot_handle)
 	else if (this_boot_mode == BM_FASTBOOT)
 	{
 		/* Load fastboot */
-		fastboot_main(global_handle, boot_handle, error_message, ARRAY_SIZE(error_message));
+		fastboot_main(global_handle, ram_base, error_message, ARRAY_SIZE(error_message));
 
 		/* Fastboot returned - show bootmenu */
 	}
@@ -1033,7 +1033,7 @@ void main(void* global_handle, int boot_handle)
 				else
 					error_message_ptr = error_message;
 
-				boot_interactively(msc_cmd.boot_image, debug_mode_str, error_message_ptr, boot_handle, error_message, ARRAY_SIZE(error_message));
+				boot_interactively(msc_cmd.boot_image, debug_mode_str, error_message_ptr, ram_base, error_message, ARRAY_SIZE(error_message));
 				break;
 
 			case MENU_ID_REBOOT: /* Reboot */
@@ -1044,23 +1044,23 @@ void main(void* global_handle, int boot_handle)
 				break;
 
 			case MENU_ID_FASTBOOT: /* Fastboot mode */
-				fastboot_main(global_handle, boot_handle, error_message, ARRAY_SIZE(error_message));
+				fastboot_main(global_handle, ram_base, error_message, ARRAY_SIZE(error_message));
 
 				/* Returned? Continue bootmenu */
 				break;
 
 			case MENU_ID_BOOT: /* Primary kernel image */
-				boot_partition("LNX", "Booting primary kernel image", boot_handle);
+				boot_partition("LNX", "Booting primary kernel image", ram_base);
 				snprintf(error_message, ARRAY_SIZE(error_message), "ERROR: Invalid primary (LNX) kernel image.");
 				break;
 
 			case MENU_ID_SECBOOT: /* Secondary kernel image */
-				boot_partition("AKB", "Booting secondary kernel image", boot_handle);
+				boot_partition("AKB", "Booting secondary kernel image", ram_base);
 				snprintf(error_message, ARRAY_SIZE(error_message), "ERROR: Invalid secondary (AKB) kernel image.");
 				break;
 
 			case MENU_ID_RECOVERY: /* Recovery kernel image */
-				boot_recovery(boot_handle);
+				boot_recovery(ram_base);
 				snprintf(error_message, ARRAY_SIZE(error_message), "ERROR: Invalid recovery (SOS) kernel image.");
 				break;
 

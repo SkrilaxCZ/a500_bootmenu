@@ -885,7 +885,7 @@ const char* fastboot_get_partition(const char* partition)
  * Fastboot main
  * ===========================================================================
  */
-void fastboot_main(void* global_handle, int boot_handle, char* error_msg, int error_msg_size)
+void fastboot_main(void* global_handle, uint32_t ram_base, char* error_msg, int error_msg_size)
 {
 	int fastboot_handle, fastboot_init, fastboot_error;
 	char cmd_buffer[0x100];
@@ -1181,7 +1181,7 @@ void fastboot_main(void* global_handle, int boot_handle, char* error_msg, int er
 					fb_refresh();
 
 					printf("FASTBOOT: Booting downloaded kernel image\n");
-					android_boot_image(downloaded_data, download_size, boot_handle);
+					android_boot_image(downloaded_data, download_size, ram_base);
 
 					/* It returned */
 					bootmenu_error();
@@ -1334,9 +1334,9 @@ void fastboot_main(void* global_handle, int boot_handle, char* error_msg, int er
 
 					/* Boot */
 					if (msc_boot_mode == BM_RECOVERY)
-						boot_recovery(boot_handle);
+						boot_recovery(ram_base);
 					else
-						boot_interactively(msc_cmd.boot_image, NULL, NULL, boot_handle, NULL, 0);
+						boot_interactively(msc_cmd.boot_image, NULL, NULL, ram_base, NULL, 0);
 
 					/* Booting returned - back to bootmenu */
 					strncpy(error_msg, "ERROR: Booting kernel image from fastboot failed.", error_msg_size);
