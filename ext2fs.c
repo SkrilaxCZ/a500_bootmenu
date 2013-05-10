@@ -886,9 +886,10 @@ int ext2fs_seek(int pos)
 	if (ext2fs_file == NULL)
 		return 1;
 
-	if (pos >= 0 && pos <= __le32_to_cpu(ext2fs_file->inode.size))
-		ext2fs_pos = pos;
+	if (pos < 0 && pos > __le32_to_cpu(ext2fs_file->inode.size))
+		return 1;
 
+	ext2fs_pos = pos;
 	return 0;
 }
 
@@ -1018,5 +1019,41 @@ int ext2fs_unmount(void)
 		return 0;
 	}
 
+	return 1;
+}
+
+int ext2fs_loadfile(char** data, int* size, const char* path)
+{
+	char partition[8];
+	char* ptr;
+	int len;
+
+	ptr = strchr(path, ':');
+	len = ((int)(ptr - path));
+
+	if (ptr == NULL || len > 4)
+		return 1;
+
+	strncpy(partition, path, len);
+	partition[len] = '\0';
+	ptr++;
+
+	if (ext2fs_mount(partition))
+		return 1;
+
+	len = ext2fs_open(ptr);
+	if (len <= 0)
+		goto fail;
+
+	*data = malloc(len);
+	*size = len;
+
+	ext2fs_read(*data, len);
+	ext2fs_close();
+	ext2fs_unmount();
+	return 0;
+
+fail:
+	ext2fs_unmount();
 	return 1;
 }

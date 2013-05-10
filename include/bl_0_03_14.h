@@ -32,11 +32,12 @@
 #ifndef BL_0_03_14_H
 #define BL_0_03_14_H
 
-
 #include <stddef.h>
 #include <stdarg.h>
 
 #ifdef __thumb__
+
+#include "bootimg.h"
 
 /* ===========================================================================
  * Thumb Mode functions
@@ -133,10 +134,10 @@ void reboot(void* global_handle);
  */
 
 /* Loads Android image, returns NULL for failure, actual return value wasn't used otherwise */
-int android_load_image(char** bootimg_data_ptr, uint32_t* bootimg_size, const char* partition);
+int android_load_image(struct boot_img_hdr** bootimg_ptr, uint32_t* bootimg_size, const char* partition);
 
 /* Boots Android image, returns in case of error */
-void android_boot_image(const char* bootimg_data, uint32_t bootimg_size, uint32_t ram_base);
+void android_boot_image(struct boot_img_hdr* bootimg, uint32_t bootimg_size, uint32_t ram_base);
 
 /*
  * Fastboot

@@ -31,6 +31,7 @@
  */
 
 #include <bl_0_03_14.h>
+#include <bootimg.h>
 
 /* ===========================================================================
  * Thumb Mode functions
@@ -89,8 +90,8 @@ void NAKED fastboot_unload_handle(int fastboot_handle)                          
  * Booting
  */
 
-int  NAKED android_load_image(char** bootimg_data, uint32_t* bootimg_size, const char* partition)          { ASM_THUMB_B(0x10C898); }
-void NAKED android_boot_image(const char* bootimg_data, uint32_t bootimg_size, int boot_handle)            { ASM_THUMB_B(0x10CB40); }
+int  NAKED android_load_image(struct boot_img_hdr** bootimg_ptr, uint32_t* bootimg_size, const char* partition)          { ASM_THUMB_B(0x10C898); }
+void NAKED android_boot_image(struct boot_img_hdr* bootimg, uint32_t bootimg_size, uint32_t ram_base)                    { ASM_THUMB_B(0x10CB40); }
 
 /* ===========================================================================
  * ARM Mode functions

@@ -23,6 +23,7 @@
 #include <bl_0_03_14.h>
 #include <framebuffer.h>
 #include <bootmenu.h>
+#include <bootimg.h>
 #include <byteorder.h>
 #include <fastboot.h>
 #include <ext2fs.h>
@@ -198,13 +199,13 @@ void fastboot_get_var_wifi_only(char* reply_buffer, int reply_buffer_size)
 	reply_buffer[reply_buffer_size - 1] = '\0';
 }
 
-/* Boot partition (id) */
+/* Boot image (id) */
 void fastboot_get_var_boot_image_id(char* reply_buffer, int reply_buffer_size)
 {
 	snprintf(reply_buffer, reply_buffer_size, "%d", msc_cmd.boot_image);
 }
 
-/* Boot partition (name) */
+/* Boot image (name) */
 void fastboot_get_var_boot_image_name(char* reply_buffer, int reply_buffer_size)
 {
 	struct boot_selection_item boot_items[20];
@@ -220,6 +221,13 @@ void fastboot_get_var_boot_image_name(char* reply_buffer, int reply_buffer_size)
 		repl = menu_items[msc_cmd.boot_image].title;
 
 	strncpy(reply_buffer, repl, reply_buffer_size);
+	reply_buffer[reply_buffer_size - 1] = '\0';
+}
+
+/* Boot file */
+void fastboot_get_var_boot_file(char* reply_buffer, int reply_buffer_size)
+{
+	strncpy(reply_buffer, msc_cmd.boot_file, reply_buffer_size);
 	reply_buffer[reply_buffer_size - 1] = '\0';
 }
 
@@ -297,6 +305,10 @@ struct fastboot_get_var_list_item fastboot_variable_table[] =
 	{
 		.var_name = "boot-image-name",
 		.var_handler = fastboot_get_var_boot_image_name,
+	},
+	{
+		.var_name = "boot-file",
+		.var_handler = fastboot_get_var_boot_file,
 	},
 	{
 		.var_name = "debugmode",
@@ -784,11 +796,11 @@ struct fastboot_oem_cmd_list_item fastboot_oem_command_table[] =
 		.cmd_handler = &fastboot_oem_cmd_sbk,
 	},
 	{
-		.cmd_name = "setboot",
+		.cmd_name = "set-boot-image",
 		.cmd_handler = &fastboot_oem_cmd_set_boot_image,
 	},
 	{
-		.cmd_name = "setmenu",
+		.cmd_name = "set-boot-file",
 		.cmd_handler = &fastboot_oem_cmd_set_boot_file,
 	},
 	{
@@ -1181,7 +1193,7 @@ void fastboot_main(void* global_handle, uint32_t ram_base, char* error_msg, int 
 					fb_refresh();
 
 					printf("FASTBOOT: Booting downloaded kernel image\n");
-					android_boot_image(downloaded_data, download_size, ram_base);
+					android_boot((struct boot_img_hdr*) downloaded_data, download_size, ram_base);
 
 					/* It returned */
 					bootmenu_error();

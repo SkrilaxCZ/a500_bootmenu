@@ -26,6 +26,7 @@
 #include <fastboot.h>
 #include <framebuffer.h>
 #include <ext2fs.h>
+#include <bootimg.h>
 
 #define MENU_ID_CONTINUE      0
 #define MENU_ID_REBOOT        1
@@ -33,13 +34,15 @@
 #define MENU_ID_BOOT          3
 #define MENU_ID_SECBOOT       4
 #define MENU_ID_RECOVERY      5
-#define MENU_ID_SETBOOT				6
-#define MENU_ID_TOGGLE_DEBUG	7
-#define MENU_ID_WIPE_CACHE		8
+#define MENU_ID_SETBOOT       6
+#define MENU_ID_TOGGLE_DEBUG  7
+#define MENU_ID_WIPE_CACHE    8
 
 /* Bootloader ID */
 const char* bootloader_id = "Skrilax_CZ's bootloader V9";
 const char* bootloader_short_id = "V9";
+
+char extra_cmdline[1024];
 
 /* Boot menu items */
 struct boot_menu_item boot_menu_items[] =
@@ -56,8 +59,6 @@ struct boot_menu_item boot_menu_items[] =
 };
 
 /* Menu file items */
-#define MENU_SUSPEND_AKB_PARTITION "suspend=1"
-
 #define MENU_TITLE_PROP            "title"
 #define MENU_ANDROID_IMAGE_PROP    "android"
 #define MENU_ZIMAGE_PROP           "zImage"
@@ -249,13 +250,13 @@ enum key_type wait_for_key_event_timed(int* timeout)
 void msc_cmd_read(void)
 {
 	struct msc_command my_cmd;
-	int msc_pt_handle;
-	uint32_t processed_bytes;
+	int msc_pt_handle = -1;
+	uint32_t processed_bytes = 0;
 
 	msc_pt_handle = 0;
 
 	if (open_partition("MSC", PARTITION_OPEN_READ, &msc_pt_handle))
-		goto finish;
+		return;
 
 	if (read_partition(msc_pt_handle, &my_cmd, sizeof(my_cmd), &processed_bytes))
 		goto finish;
@@ -266,6 +267,10 @@ void msc_cmd_read(void)
 	memcpy(&msc_cmd, &my_cmd, sizeof(my_cmd));
 
 finish:
+
+	/* Make sure strings are null terminated */
+	msc_cmd.boot_file[ARRAY_SIZE(msc_cmd.boot_file) - 1] = '\0';
+
 	close_partition(msc_pt_handle);
 	return;
 }
@@ -275,8 +280,8 @@ finish:
  */
 void msc_cmd_write(void)
 {
-	int msc_pt_handle;
-	uint32_t processed_bytes;
+	int msc_pt_handle = -1;
+	uint32_t processed_bytes = 0;
 
 	msc_pt_handle = 0;
 
@@ -400,6 +405,7 @@ void configure_custom_cmdline(char* cmdline, int size)
 	const char* debug_cmd;
 	int len;
 
+	/* Debug mode */
 	if (msc_cmd.debug_mode)
 		debug_cmd = "console=ttyS0,115200n8 debug_uartport=lsport ";
 	else
@@ -410,7 +416,52 @@ void configure_custom_cmdline(char* cmdline, int size)
 	cmdline += len;
 	size -= len;
 
+	/* Extra cmdline */
+	if (extra_cmdline[0] != '\0')
+	{
+		snprintf(cmdline, size, extra_cmdline);
+		len = strlen(cmdline);
+		cmdline += len;
+		size -= len;
+	}
+
+	/* Bootloader ID */
 	snprintf(cmdline, size, "skrilax.bootloader=%s ", bootloader_short_id);
+}
+
+/*
+ * Boots Android image from partition (returns on ERROR)
+ */
+void android_boot_from_partition(const char* partition, uint32_t ram_base)
+{
+	struct boot_img_hdr* bootimg_data = NULL;
+	uint32_t bootimg_size = 0;
+
+	if (!android_load_image(&bootimg_data, &bootimg_size, partition))
+		return;
+
+	if (!bootimg_data->magic[0])
+		return;
+
+	android_boot(bootimg_data, bootimg_size, ram_base);
+}
+
+/*
+ * Boots Android image from parameter (returns on ERROR)
+ */
+void android_boot(struct boot_img_hdr* bootimg_data, uint32_t bootimg_size, uint32_t ram_base)
+{
+	if (bootimg_data->cmdline[0] == '@')
+	{
+		/* EXTRA CMDLINE */
+		bootimg_data->cmdline[0] = '\0';
+		strncpy(extra_cmdline, &(bootimg_data->cmdline[1]), ARRAY_SIZE(extra_cmdline));
+		extra_cmdline[ARRAY_SIZE(extra_cmdline) - 1] = '\0';
+	}
+	else
+		extra_cmdline[0] = '\0';
+
+	android_boot_image(bootimg_data, bootimg_size, ram_base);
 }
 
 /*
@@ -418,10 +469,13 @@ void configure_custom_cmdline(char* cmdline, int size)
  */
 int load_boot_images(struct boot_selection_item* boot_items, struct boot_menu_item* menu_items, int max_items)
 {
-	int i, len, ret;
+	int len, ret;
 	int have_akb = 0;
 	int num_items = 0;
 	uint64_t partition_size;
+	char android_img_header[8];
+	int akb_pt_handle = -1;
+	uint32_t processed_bytes = 0;
 	char boot_file_partition[8];
 	char section[64];
 	char line[256];
@@ -431,6 +485,8 @@ int load_boot_images(struct boot_selection_item* boot_items, struct boot_menu_it
 
 	if (max_items < 2)
 		return 0;
+
+	printf("BOOTMENU: loading images\n");
 
 	/* Always add primary boot (secondary only if the partition exists) */
 	strncpy(boot_items[num_items].partition, "LNX", ARRAY_SIZE(boot_items[0].partition));
@@ -447,6 +503,19 @@ int load_boot_images(struct boot_selection_item* boot_items, struct boot_menu_it
 	/* Read from PT if AKB exists, if it does, add it */
 	if (get_partition_size("AKB", &partition_size) == 0)
 	{
+		/* Do we have Anroid boot image in there */
+		if (open_partition("AKB", PARTITION_OPEN_READ, &akb_pt_handle))
+			goto akb_exit;
+
+		ret = read_partition(akb_pt_handle, &android_img_header, sizeof(android_img_header), &processed_bytes);
+		close_partition(akb_pt_handle);
+
+		if (ret || processed_bytes != sizeof(android_img_header))
+			goto akb_exit;
+
+		if (memcmp(android_img_header, BOOT_MAGIC, sizeof(android_img_header)))
+			goto akb_exit;
+
 		strncpy(boot_items[num_items].partition, "AKB", ARRAY_SIZE(boot_items[0].partition));
 		boot_items[num_items].partition[ARRAY_SIZE(boot_items[1].partition) - 1] = '\0';
 		boot_items[num_items].path_android[0] = '\0';
@@ -458,12 +527,12 @@ int load_boot_images(struct boot_selection_item* boot_items, struct boot_menu_it
 		menu_items[num_items].id = num_items;
 		num_items++;
 		have_akb = 1;
+
+		printf("BOOTMENU: have akb partition\n");
 	}
+akb_exit:
 
 	/* Read menu file */
-
-	/* Make sure it's null terminated */
-	msc_cmd.boot_file[ARRAY_SIZE(msc_cmd.boot_file) - 1] = '\0';
 	ptr = strchr(msc_cmd.boot_file, ':');
 	len = ((int)(ptr - msc_cmd.boot_file));
 
@@ -487,6 +556,8 @@ int load_boot_images(struct boot_selection_item* boot_items, struct boot_menu_it
 	/* Read it line by line */
 	section[0] = '\0';
 	boot_current.title[0] = '\0';
+
+	printf("BOOTMENU: began reading menu file\n");
 
 	while(1)
 	{
@@ -528,6 +599,7 @@ int load_boot_images(struct boot_selection_item* boot_items, struct boot_menu_it
 				/* Set section */
 				strncpy(section, ptr, ARRAY_SIZE(section));
 				section[ARRAY_SIZE(section) - 1] = '\0';
+				printf("BOOTMENU: new section %s\n", section);
 
 				/* Reset */
 				strncpy(boot_current.title, section, ARRAY_SIZE(boot_current.title));
@@ -583,26 +655,6 @@ int load_boot_images(struct boot_selection_item* boot_items, struct boot_menu_it
 					boot_items[1].title[ARRAY_SIZE(boot_items[1].title) - 1] = '\0';
 					menu_items[1].title = boot_items[1].title;
 				}
-				else if (!strcmp(ptr, MENU_SUSPEND_AKB_PARTITION))
-				{
-					have_akb = 0;
-
-					if (num_items == 2)
-						num_items = 1;
-					else
-					{
-						/* Move all subsequent items one line ahead */
-						for (i = 2; i < num_items; i++)
-						{
-							memcpy(&boot_items[i - 1], &boot_items[i], sizeof(struct boot_selection_item));
-							memcpy(&menu_items[i - 1], &menu_items[i], sizeof(struct boot_menu_item));
-							menu_items[i-1].title = boot_items[i-1].title;
-							menu_items[i-1].id--;
-						}
-
-						num_items--;
-					}
-				}
 			}
 			continue;
 		}
@@ -613,30 +665,35 @@ int load_boot_images(struct boot_selection_item* boot_items, struct boot_menu_it
 			ptr2 = &ptr[strlen(MENU_TITLE_PROP "=")];
 			strncpy(boot_current.title, ptr2, ARRAY_SIZE(boot_current.title));
 			boot_current.title[ARRAY_SIZE(boot_current.title) - 1] = '\0';
+			printf("BOOTMENU: title: %s\n", boot_current.title);
 		}
 		else if (!strncmp(ptr, MENU_ANDROID_IMAGE_PROP "=", strlen(MENU_ANDROID_IMAGE_PROP "=")))
 		{
 			ptr2 = &ptr[strlen(MENU_ANDROID_IMAGE_PROP "=")];
 			strncpy(boot_current.path_android, ptr2, ARRAY_SIZE(boot_current.path_android));
 			boot_current.path_android[ARRAY_SIZE(boot_current.path_android) - 1] = '\0';
+			printf("BOOTMENU: android: %s\n", boot_current.path_android);
 		}
 		else if (!strncmp(ptr, MENU_ZIMAGE_PROP "=", strlen(MENU_ZIMAGE_PROP "=")))
 		{
 			ptr2 = &ptr[strlen(MENU_ZIMAGE_PROP "=")];
 			strncpy(boot_current.path_zImage, ptr2, ARRAY_SIZE(boot_current.path_zImage));
 			boot_current.path_zImage[ARRAY_SIZE(boot_current.path_zImage) - 1] = '\0';
+			printf("BOOTMENU: zImage: %s\n", boot_current.path_zImage);
 		}
 		else if (!strncmp(ptr, MENU_RAMDISK_PROP "=", strlen(MENU_RAMDISK_PROP "=")))
 		{
 			ptr2 = &ptr[strlen(MENU_RAMDISK_PROP "=")];
 			strncpy(boot_current.path_ramdisk, ptr2, ARRAY_SIZE(boot_current.path_ramdisk));
 			boot_current.path_ramdisk[ARRAY_SIZE(boot_current.path_ramdisk) - 1] = '\0';
+			printf("BOOTMENU: ramdisk: %s\n", boot_current.path_ramdisk);
 		}
 		else if (!strncmp(ptr, MENU_CMDLINE_PROP "=", strlen(MENU_CMDLINE_PROP "=")))
 		{
 			ptr2 = &ptr[strlen(MENU_CMDLINE_PROP "=")];
 			strncpy(boot_current.cmdline, ptr2, ARRAY_SIZE(boot_current.cmdline));
 			boot_current.cmdline[ARRAY_SIZE(boot_current.cmdline) - 1] = '\0';
+			printf("BOOTMENU: cmdline: %s\n", boot_current.cmdline);
 		}
 	}
 
@@ -654,6 +711,7 @@ int load_boot_images(struct boot_selection_item* boot_items, struct boot_menu_it
 
 fail_open:
 	ext2fs_unmount();
+	printf("BOOTMENU: finished reading menu file\n");
 	return num_items;
 }
 
@@ -735,31 +793,13 @@ void boot_interactively(int initial_selection, const char* message, const char* 
 }
 
 /*
- * Boots Android image (returns on ERROR)
- */
-void boot_android_image_from_partition(const char* partition, uint32_t ram_base)
-{
-	char* bootimg_data = NULL;
-	uint32_t bootimg_size = 0;
-
-	if (!android_load_image(&bootimg_data, &bootimg_size, partition))
-		return;
-
-	if (!*(bootimg_data))
-		return;
-
-	android_boot_image(bootimg_data, bootimg_size, ram_base);
-}
-
-/*
  * Boots normally (returns on ERROR)
  */
 void boot_normal(struct boot_selection_item* item, const char* status, uint32_t ram_base)
 {
-	int len;
-	char boot_file_partition[8];
-	char* ptr;
-	char* bootimg;
+	struct boot_img_hdr* bootimg;
+	char *zImage, *ramdisk;
+	int bootimg_len, zImage_len, ramdisk_len;
 
 	/* Normal mode frame */
 	bootmenu_basic_frame();
@@ -771,58 +811,102 @@ void boot_normal(struct boot_selection_item* item, const char* status, uint32_t 
 		fb_printf("Booting android image from %s partition ...\n", item->partition);
 		fb_refresh();
 
-		boot_android_image_from_partition(item->partition, ram_base);
+		android_boot_from_partition(item->partition, ram_base);
 	}
-	else if (item->path_android[0] != '\0')
+	else
 	{
-		ptr = strchr(item->path_android, ':');
-		len = ((int)(ptr - item->path_android));
+		if (item->path_android[0] != '\0')
+		{
+			fb_printf("Loading android image from filesystem ...");
+			fb_refresh();
 
-		fb_printf("Loading android image from filesystem ...", item->partition);
+			/* Load it */
+			if (ext2fs_loadfile((char**)&bootimg, &bootimg_len, item->path_android))
+			{
+				fb_printf(" FAIL\n");
+				fb_refresh();
+				sleep(2000);
+				return;
+			}
+
+			fb_printf(" OK\n");
+			fb_refresh();
+		}
+		else if (item->path_zImage[0] != '\0')
+		{
+			/* Load zImage */
+			fb_printf("Loading kernel image from filesystem ...");
+			fb_refresh();
+
+			/* Load it */
+			if (ext2fs_loadfile(&zImage, &zImage_len, item->path_zImage))
+			{
+				fb_printf(" FAIL\n");
+				fb_refresh();
+				sleep(10000);
+				return;
+			}
+
+			fb_printf(" OK\n");
+			fb_refresh();
+
+			/* Load ramdisk if it exists */
+			if (item->path_ramdisk[0] != '\0')
+			{
+				fb_printf("Loading ramdisk from filesystem ...");
+				fb_refresh();
+
+				/* Load it */
+				if (ext2fs_loadfile(&ramdisk, &ramdisk_len, item->path_ramdisk))
+				{
+					free(zImage);
+					fb_printf(" FAIL\n");
+					fb_refresh();
+					sleep(2000);
+					return;
+				}
+
+				fb_printf(" OK\n");
+				fb_refresh();
+			}
+			else
+			{
+				ramdisk = NULL;
+				ramdisk_len = 0;
+			}
+
+			/* Create image */
+			if (create_android_image(&bootimg, &bootimg_len, zImage, zImage_len, ramdisk, ramdisk_len))
+			{
+				free(zImage);
+				free(ramdisk);
+				fb_printf("Booting ... FAIL\n");
+				fb_refresh();
+				sleep(2000);
+				return;
+			}
+
+			free(zImage);
+			free(ramdisk);
+		}
+		else
+		{
+			fb_color_printf("No image to boot!\n", NULL, &error_text_color);
+			fb_refresh();
+			sleep(2000);
+			return;
+		}
+
+		/* Overwrite cmdline if demanded */
+		if (item->cmdline[0] != '\0')
+		{
+			strncpy(bootimg->cmdline, item->cmdline, BOOT_ARGS_SIZE);
+			bootimg->cmdline[BOOT_ARGS_SIZE - 1] = '\0';
+		}
+
+		fb_printf("Booting ...");
 		fb_refresh();
-
-		/* Failure reading the path */
-		if (ptr == NULL || len > 4)
-		{
-			fb_printf(" FAIL\n", item->partition);
-			fb_refresh();
-			sleep(2000);
-			return;
-		}
-
-		strncpy(boot_file_partition, msc_cmd.boot_file, len);
-		boot_file_partition[len] = '\0';
-		ptr++;
-
-		/* Mount partition */
-		if (ext2fs_mount(boot_file_partition))
-		{
-			fb_printf(" FAIL\n", item->partition);
-			fb_refresh();
-			sleep(2000);
-			return;
-		}
-
-		/* Open the file */
-		len = ext2fs_open(ptr);
-		if (len < 0)
-		{
-			ext2fs_unmount();
-			fb_printf(" FAIL\n", item->partition);
-			fb_refresh();
-			sleep(2000);
-			return;
-		}
-
-		bootimg = malloc(len);
-		ext2fs_read(bootimg, len);
-		ext2fs_close();
-		ext2fs_unmount();
-
-		fb_printf(" OK\n", item->partition);
-		fb_printf("Booting ...", item->partition);
-		fb_refresh();
-		android_boot_image(bootimg, len, ram_base);
+		android_boot(bootimg, bootimg_len, ram_base);
 	}
 }
 
@@ -838,7 +922,7 @@ void boot_normal(struct boot_selection_item* item, const char* status, uint32_t 
 	fb_printf("Booting android image from %s partition ...\n", partition);
 	fb_refresh();
 
-	boot_android_image_from_partition(partition, ram_base);
+	android_boot_from_partition(partition, ram_base);
 }
 
 /*
@@ -852,7 +936,7 @@ void boot_recovery(uint32_t ram_base)
 	fb_set_status("Booting recovery kernel image");
 	fb_refresh();
 
-	boot_android_image_from_partition("SOS", ram_base);
+	android_boot_from_partition("SOS", ram_base);
 }
 
 /*

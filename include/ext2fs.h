@@ -39,5 +39,6 @@ int ext2fs_gets(char* buf, int bufsize);
 int ext2fs_close(void);
 int ext2fs_mount(const char* partition);
 int ext2fs_unmount(void);
+int ext2fs_loadfile(char** data, int* size, const char* path);
 
 #endif //!EXT2FS_H
