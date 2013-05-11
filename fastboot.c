@@ -227,6 +227,9 @@ void fastboot_get_var_boot_image_name(char* reply_buffer, int reply_buffer_size)
 /* Boot file */
 void fastboot_get_var_boot_file(char* reply_buffer, int reply_buffer_size)
 {
+	/* Make sure boot_file is null terminated */
+	msc_cmd.boot_file[ARRAY_SIZE(msc_cmd.boot_file) - 1 ] = '\0';
+
 	strncpy(reply_buffer, msc_cmd.boot_file, reply_buffer_size);
 	reply_buffer[reply_buffer_size - 1] = '\0';
 }
@@ -236,14 +239,29 @@ void fastboot_get_var_debug_mode(char* reply_buffer, int reply_buffer_size)
 {
 	const char* repl;
 
-	if (msc_cmd.debug_mode == 0)
-		repl = "OFF";
-	else
+	if (msc_cmd.settings & MSC_SETTINGS_DEBUG_MODE)
 		repl = "ON";
+	else
+		repl = "OFF";
 
 	strncpy(reply_buffer, repl, reply_buffer_size);
 	reply_buffer[reply_buffer_size - 1] = '\0';
 }
+
+/* Forbid booting from EXTFS */
+void fastboot_get_var_forbid_ext(char* reply_buffer, int reply_buffer_size)
+{
+	const char* repl;
+
+	if (msc_cmd.settings & MSC_SETTINGS_FORBID_EXT)
+		repl = "ON";
+	else
+		repl = "OFF";
+
+	strncpy(reply_buffer, repl, reply_buffer_size);
+	reply_buffer[reply_buffer_size - 1] = '\0';
+}
+
 
 /* Product */
 void fastboot_get_var_product(char* reply_buffer, int reply_buffer_size)
@@ -311,8 +329,12 @@ struct fastboot_get_var_list_item fastboot_variable_table[] =
 		.var_handler = fastboot_get_var_boot_file,
 	},
 	{
-		.var_name = "debugmode",
+		.var_name = "debug-mode",
 		.var_handler = &fastboot_get_var_debug_mode,
+	},
+	{
+		.var_name = "forbid-ext",
+		.var_handler = &fastboot_get_var_forbid_ext,
 	},
 	{
 		.var_name = "product",
@@ -411,7 +433,7 @@ int fastboot_oem_cmd_set_boot_image(int fastboot_handle, const char* args)
 {
 	int fastboot_status;
 	const char* info_reply_ok = FASTBOOT_RESP_INFO "Boot image set to: %d";
-	const char* info_reply_bad = FASTBOOT_RESP_INFO "Invalid boot partition";
+	const char* info_reply_bad = FASTBOOT_RESP_INFO "Invalid boot image";
 	char ok_reply_buffer[128];
 	long int boot_image;
 
@@ -442,11 +464,21 @@ int fastboot_oem_cmd_set_boot_file(int fastboot_handle, const char* args)
 {
 	int fastboot_status;
 	const char* info_reply_ok = FASTBOOT_RESP_INFO "Boot image menu file: %s";
+	const char* info_reply_empty = FASTBOOT_RESP_INFO "Unset boot image menu file";
 	const char* info_reply_bad = FASTBOOT_RESP_INFO "Invalid boot image menu file";
 	char* ptr;
 	char ok_reply_buffer[512];
 
-	if (args[0] == '\0' || strlen(args) >= ARRAY_SIZE(msc_cmd.boot_file))
+	if (args[0] == '\0')
+	{
+		msc_cmd.boot_file[0] = '\0';
+		msc_cmd_write();
+
+		fastboot_status = fastboot_send(fastboot_handle, info_reply_empty, strlen(info_reply_empty));
+		return fastboot_cmd_status(fastboot_status);
+	}
+
+	if (strlen(args) >= ARRAY_SIZE(msc_cmd.boot_file))
 	{
 		fastboot_status = fastboot_send(fastboot_handle, info_reply_bad, strlen(info_reply_bad));
 		return fastboot_cmd_status(fastboot_status);
@@ -479,14 +511,44 @@ int fastboot_oem_cmd_debug_mode(int fastboot_handle, const char* args)
 
 	if (!strcmp(args, "on"))
 	{
-		msc_cmd.debug_mode = 1;
+		msc_cmd.settings |= MSC_SETTINGS_DEBUG_MODE;
 		msc_cmd_write();
 
 		reply = info_reply_on;
 	}
 	else if (!strcmp(args, "off"))
 	{
-		msc_cmd.debug_mode = 0;
+		msc_cmd.settings &= ~MSC_SETTINGS_DEBUG_MODE;
+		msc_cmd_write();
+
+		reply = info_reply_off;
+	}
+	else
+		reply = info_reply_bad;
+
+	fastboot_status = fastboot_send(fastboot_handle, reply, strlen(reply));
+	return fastboot_cmd_status(fastboot_status);
+}
+
+/* Forbid booting from EXTFS ON/OFF */
+int fastboot_oem_cmd_forbid_ext(int fastboot_handle, const char* args)
+{
+	int fastboot_status;
+	const char* info_reply_on = FASTBOOT_RESP_INFO "Booting from EXTFS is now forbidden!";
+	const char* info_reply_off = FASTBOOT_RESP_INFO "Booting from EXTFS is now allowed!";
+	const char* info_reply_bad = FASTBOOT_RESP_INFO "Invalid argument!";
+	const char* reply;
+
+	if (!strcmp(args, "on"))
+	{
+		msc_cmd.settings |= MSC_SETTINGS_FORBID_EXT;
+		msc_cmd_write();
+
+		reply = info_reply_on;
+	}
+	else if (!strcmp(args, "off"))
+	{
+		msc_cmd.settings &= ~MSC_SETTINGS_FORBID_EXT;
 		msc_cmd_write();
 
 		reply = info_reply_off;
@@ -804,8 +866,12 @@ struct fastboot_oem_cmd_list_item fastboot_oem_command_table[] =
 		.cmd_handler = &fastboot_oem_cmd_set_boot_file,
 	},
 	{
-		.cmd_name = "debug",
+		.cmd_name = "set-debug-mode",
 		.cmd_handler = &fastboot_oem_cmd_debug_mode,
+	},
+	{
+		.cmd_name = "set-forbid-ext",
+		.cmd_handler = &fastboot_oem_cmd_forbid_ext,
 	},
 	{
 		.cmd_name = "lock",

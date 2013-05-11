@@ -36,7 +36,8 @@
 #define MENU_ID_RECOVERY      5
 #define MENU_ID_SETBOOT       6
 #define MENU_ID_TOGGLE_DEBUG  7
-#define MENU_ID_WIPE_CACHE    8
+#define MENU_ID_FORBID_EXT    8
+#define MENU_ID_WIPE_CACHE    9
 
 /* Bootloader ID */
 const char* bootloader_id = "Skrilax_CZ's bootloader V9";
@@ -55,6 +56,7 @@ struct boot_menu_item boot_menu_items[] =
 	{ "Boot Recovery", MENU_ID_RECOVERY },
 	{ "Set Default Kernel Image", MENU_ID_SETBOOT },
 	{ "" /* set in main */, MENU_ID_TOGGLE_DEBUG },
+	{ "" /* set in main */, MENU_ID_FORBID_EXT },
 	{ "Wipe Cache", MENU_ID_WIPE_CACHE },
 };
 
@@ -406,7 +408,7 @@ void configure_custom_cmdline(char* cmdline, int size)
 	int len;
 
 	/* Debug mode */
-	if (msc_cmd.debug_mode)
+	if (msc_cmd.settings & MSC_SETTINGS_DEBUG_MODE)
 		debug_cmd = "console=ttyS0,115200n8 debug_uartport=lsport ";
 	else
 		debug_cmd = "console=none debug_uartport=hsport ";
@@ -531,6 +533,10 @@ int load_boot_images(struct boot_selection_item* boot_items, struct boot_menu_it
 		printf("BOOTMENU: have akb partition\n");
 	}
 akb_exit:
+
+	/* If reading EXT filesystem is forbidden, quit here */
+	if ((msc_cmd.settings & MSC_SETTINGS_FORBID_EXT) || msc_cmd.boot_file[0] == '\0')
+		return num_items;
 
 	/* Read menu file */
 	ptr = strchr(msc_cmd.boot_file, ':');
@@ -971,6 +977,8 @@ void main(void* global_handle, uint32_t ram_base)
 {
 	/* Debug mode status */
 	const char* debug_mode_str;
+	const char* forbid_ext_str;
+	char status_msg[2 * TEXT_LINE_CHARS + 2];
 
 	/* Print error, from which partition booting failed */
 	char error_message[TEXT_LINE_CHARS + 1];
@@ -1032,16 +1040,30 @@ void main(void* global_handle, uint32_t ram_base)
 	msc_cmd_write();
 
 	/* Set debug mode */
-	if (msc_cmd.debug_mode == 0)
-	{
-		debug_mode_str = "Debug Mode: OFF";
-		boot_menu_items[7].title = "Set Debug Mode ON";
-	}
-	else
+	if (msc_cmd.settings & MSC_SETTINGS_DEBUG_MODE)
 	{
 		debug_mode_str = "Debug Mode: ON";
 		boot_menu_items[7].title = "Set Debug Mode OFF";
 	}
+	else
+	{
+		debug_mode_str = "Debug Mode: OFF";
+		boot_menu_items[7].title = "Set Debug Mode ON";
+	}
+
+	/* Set forbid ext */
+	if (msc_cmd.settings & MSC_SETTINGS_FORBID_EXT)
+	{
+		forbid_ext_str = "Booting from EXTFS: Forbidden";
+		boot_menu_items[8].title = "Allow booting from EXTFS";
+	}
+	else
+	{
+		forbid_ext_str = "Booting from EXTFS: Allowed";
+		boot_menu_items[8].title = "Forbid booting from EXTFS";
+	}
+
+	snprintf(status_msg, ARRAY_SIZE(status_msg), "%s\n%s", debug_mode_str, forbid_ext_str);
 
 	/* Evaluate boot mode */
 	if (this_boot_mode == BM_NORMAL)
@@ -1051,7 +1073,7 @@ void main(void* global_handle, uint32_t ram_base)
 		else
 			error_message_ptr = error_message;
 
-		boot_interactively(msc_cmd.boot_image, debug_mode_str, error_message_ptr, ram_base, error_message, ARRAY_SIZE(error_message));
+		boot_interactively(msc_cmd.boot_image, status_msg, error_message_ptr, ram_base, error_message, ARRAY_SIZE(error_message));
 	}
 	else if (this_boot_mode == BM_RECOVERY)
 	{
@@ -1107,7 +1129,7 @@ void main(void* global_handle, uint32_t ram_base)
 			error_message_ptr = error_message;
 
 		/* Check menu selection*/
-		menu_selection = show_menu(boot_menu_items, ARRAY_SIZE(boot_menu_items), 0, debug_mode_str, error_message_ptr, 0);
+		menu_selection = show_menu(boot_menu_items, ARRAY_SIZE(boot_menu_items), 0, status_msg, error_message_ptr, 0);
 
 		switch(menu_selection)
 		{
@@ -1117,7 +1139,7 @@ void main(void* global_handle, uint32_t ram_base)
 				else
 					error_message_ptr = error_message;
 
-				boot_interactively(msc_cmd.boot_image, debug_mode_str, error_message_ptr, ram_base, error_message, ARRAY_SIZE(error_message));
+				boot_interactively(msc_cmd.boot_image, status_msg, error_message_ptr, ram_base, error_message, ARRAY_SIZE(error_message));
 				break;
 
 			case MENU_ID_REBOOT: /* Reboot */
@@ -1153,20 +1175,47 @@ void main(void* global_handle, uint32_t ram_base)
 				break;
 
 			case MENU_ID_TOGGLE_DEBUG: /* Toggle debug mode */
-				msc_cmd.debug_mode = !msc_cmd.debug_mode;
-				msc_cmd_write();
-				printf("BOOTMENU: Debug mode %d\n", msc_cmd.debug_mode);
-
-				if (msc_cmd.debug_mode == 0)
-				{
-					debug_mode_str = "Debug Mode: OFF";
-					boot_menu_items[7].title = "Set Debug Mode ON";
-				}
+				if (msc_cmd.settings & MSC_SETTINGS_DEBUG_MODE)
+					msc_cmd.settings &= ~MSC_SETTINGS_DEBUG_MODE;
 				else
+					msc_cmd.settings |= MSC_SETTINGS_DEBUG_MODE;
+				msc_cmd_write();
+				printf("BOOTMENU: Debug mode %d\n", ((msc_cmd.settings & MSC_SETTINGS_DEBUG_MODE) != 0));
+
+				if (msc_cmd.settings & MSC_SETTINGS_DEBUG_MODE)
 				{
 					debug_mode_str = "Debug Mode: ON";
 					boot_menu_items[7].title = "Set Debug Mode OFF";
 				}
+				else
+				{
+					debug_mode_str = "Debug Mode: OFF";
+					boot_menu_items[7].title = "Set Debug Mode ON";
+				}
+
+				snprintf(status_msg, ARRAY_SIZE(status_msg), "%s\n%s", debug_mode_str, forbid_ext_str);
+
+				break;
+
+			case MENU_ID_FORBID_EXT: /* Set forbid ext */
+				if (msc_cmd.settings & MSC_SETTINGS_FORBID_EXT)
+					msc_cmd.settings &= ~MSC_SETTINGS_FORBID_EXT;
+				else
+					msc_cmd.settings |= MSC_SETTINGS_FORBID_EXT;
+				msc_cmd_write();
+				printf("BOOTMENU: Debug mode %d\n", ((msc_cmd.settings & MSC_SETTINGS_FORBID_EXT) != 0));
+				if (msc_cmd.settings & MSC_SETTINGS_FORBID_EXT)
+				{
+					forbid_ext_str = "Booting from EXTFS: Forbidden";
+					boot_menu_items[8].title = "Allow booting from EXTFS";
+				}
+				else
+				{
+					forbid_ext_str = "Booting from EXTFS: Allowed";
+					boot_menu_items[8].title = "Forbid booting from EXTFS";
+				}
+
+				snprintf(status_msg, ARRAY_SIZE(status_msg), "%s\n%s", debug_mode_str, forbid_ext_str);
 
 				break;
 

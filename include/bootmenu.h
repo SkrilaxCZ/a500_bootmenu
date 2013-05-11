@@ -27,6 +27,9 @@
 #define MSC_CMD_FASTBOOT        "FastbootMode"
 #define MSC_CMD_BOOTMENU        "BootmenuMode"
 
+#define MSC_SETTINGS_DEBUG_MODE 0x00000001
+#define MSC_SETTINGS_FORBID_EXT 0x00000002
+
 /* MSC command */
 struct msc_command
 {
@@ -35,11 +38,11 @@ struct msc_command
 	 */
 	char boot_command[0x0C];
 
-	/* Debug mode:
-	 * 00 - off
-	 * 01 - on
+	/* Settings, see defines:
+	 * MSC_SETTINGS_DEBUG_MODE
+	 * MSC_SETTINGS_FORBID_EXT2
 	 */
-	unsigned char debug_mode;
+	unsigned char settings;
 
 	/* Boot image:
 	 * 00 - LNX

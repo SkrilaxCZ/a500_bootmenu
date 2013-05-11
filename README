@@ -1,20 +1,69 @@
 Bootmenu application for A500 patched ICS bootloader featuring booting from EXT4FS and extended fastboot commands.
 
 ================================================================================
+Fastboot variables:
+================================================================================
+
+fastboot getvar id-bootloader
+- returns ID of the bootloader
+
+fastboot getvar version-bootloader
+- returns version of the bootloader
+
+fastboot getvar version-baseband
+- returns version of the baseband
+
+fastboot getvar version-android
+- returns version of android (from APP:/build.prop)
+
+fastboot getvar version
+- returns fastboot protocol version
+
+fastboot getvar secure
+- returns "NOPE.AVI", "NO", "NEVER", etc. :-P
+
+fastboot getvar mid
+- returns mid
+
+fastboot getvar serialno
+- returns serial number
+
+fastboot getvar wifi-only
+- returns whether the tablet is A500 or A501
+
+fastboot getvar boot-image-id
+- returns current boot image as a number (0 - LNX partition, 1 - second entry, 2 - third entry etc.)
+
+fastboot getvar boot-image-name
+- returns current boot image as a name
+
+fastboot getvar boot-file
+- returns path to menu.skrilax in BL format
+
+fastboot getvar debug-mode
+- returns ON/OFF depending on whether debug mode is toggled or not
+
+fastboot getvar forbid-ext
+- returns ON/OFF depending on whether EXTFS booting is forbidden
+
+================================================================================
 Fastboot oem commands:
 ================================================================================
 
 fastboot oem sbk
 - displays your sbk on the screen
 
-fastboot oem setboot %d
-- sets default boot image (0 - LNX partition, 1 - second entry ...)
+fastboot oem set-boot-image %d
+- sets default boot image (0 - LNX partition, 1 - second entry, 2 - third entry etc.)
 
-fastboot oem setmenu %s
-- sets the path to menu.lst file in BL format (see below)
+fastboot oem set-boot-file %s
+- sets the path to menu.skrilax file in BL format (see below)
 
-fastboot oem debug on|off
-- toggles debug on or off in cmdline
+fastboot oem set-debug-mode on|off
+- toggles debug on or off for cmdline
+
+fastboot oem set-forbid-ext on|off
+- whether to allow EXTFS booting or not (for cases of corrupted filesystem and unability to boot)
 
 fastboot oem lock
 - ...
@@ -37,10 +86,10 @@ AKB     mmcblk0p7     secboot
 UDA     mmcblk0p8     userdata
 
 (for my own repartition purposes, I've also added UBN for ubuntu, fastboot flashes that with "linux").
-If you want to specify a file as /system/boot/menu.lst from Android, BL format would be APP:/boot/menu.lst.
+If you want to specify a file as /system/boot/menu.lst from Android, BL format would be APP:/boot/menu.skrilax.
 
 ================================================================================
-Example menu.lst file:
+Example menu.skrilax file:
 ================================================================================
 ; commentary is prefixed with ';'
 ; .ini file structure
@@ -51,20 +100,33 @@ Example menu.lst file:
 [LNX]
 title=Android
 
-; AKB - secondary image (will not show if property 'suspend=1' (should AKB be used as EXT4 etc.), can specify title only)
+; AKB - secondary image (will not show if property AKB partition doesn't hold android images)
 [AKB]
 title=LUbuntu
-;suspend=1
 
-; First EXT4FS entry - two properies
-; title
-; android - path to android image in BL format (see above)
+; Properties for EXTFS booting
+;
+; title - text to show in menu
+; cmdline - override cmdline (prefixing with @ will make the bootloader append the cmdline to the default one)
+;
+; Then there are two possibilities:
+;
+; A) boot android image
+; android - path to android image (will be used if present)
+;
+; B) boot zImage with ramdisk (optional)
+; zImage - path to zImage
+; ramdisk - path to ramdisk (optional)
+
+; First entry
 [BOOT1]
 title=EXT4FS Boot 1
-android=UBN:/boot/boot1.img
+android=UBN:/boot/boot.img
 
 ; Second entry
 [BOOT2]
 title=EXT4FS Boot 2
-android=UBN:/boot/boot2.img
+zImage=UBN:/boot/zImage
+ramdisk=UBN:/boot/ramdisk
+
 ================================================================================

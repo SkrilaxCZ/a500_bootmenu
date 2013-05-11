@@ -538,7 +538,6 @@ static int ext2fs_iterate_dir(ext2fs_node_t dir, char* name, ext2fs_node_t* fnod
 		if (status < 1)
 			return 1;
 
-
 		if (dirent.direntlen == 0)
 			return 1;
 
