@@ -849,7 +849,7 @@ void boot_normal(struct boot_selection_item* item, const char* status, uint32_t 
 			{
 				fb_printf(" FAIL\n");
 				fb_refresh();
-				sleep(10000);
+				sleep(2000);
 				return;
 			}
 
