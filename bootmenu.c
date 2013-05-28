@@ -127,7 +127,7 @@ void bootmenu_frame(int set_status)
 	for (i = 0; i < (TEXT_LINE_CHARS - l) / 2; i++)
 		buffer[i] = ' ';
 
-	strncpy(&(buffer[(TEXT_LINE_CHARS - l) / 2]), hint, l);
+	strncpy(&(buffer[(TEXT_LINE_CHARS - l) / 2]), hint, ARRAY_SIZE(buffer) - ((TEXT_LINE_CHARS - l) / 2) - 1);
 	buffer[ARRAY_SIZE(buffer) - 1] = '\0';
 	fb_printf(buffer);
 	fb_printf("\n\n\n");
