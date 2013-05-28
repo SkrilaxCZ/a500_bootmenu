@@ -23,7 +23,7 @@
 #define FRAMEBUFFER_H
 
 #define TEXT_LINES          39
-#define TEXT_LINE_CHARS     80
+#define TEXT_LINE_CHARS     60
 
 /* RGBX color */
 struct color

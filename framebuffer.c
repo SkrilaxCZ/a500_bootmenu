@@ -57,16 +57,16 @@ struct font_color title_color =
 {
 	.color =
 	{
-		.R = 0xFF,
-		.G = 0xFF,
-		.B = 0xFF,
+		.R = 0x98,
+		.G = 0xCD,
+		.B = 0x57,
 		.X = 0x00,
 	},
 	.outline =
 	{
-		.R = 0xCD,
-		.G = 0xE8,
-		.B = 0xA3,
+		.R = 0x00,
+		.G = 0x00,
+		.B = 0x00,
 		.X = 0x00,
 	}
 };
@@ -76,16 +76,16 @@ struct font_color text_color =
 {
 	.color =
 	{
-		.R = 0xFF,
-		.G = 0xFF,
-		.B = 0xFF,
+		.R = 0x98,
+		.G = 0xCD,
+		.B = 0x57,
 		.X = 0x00,
 	},
 	.outline =
 	{
-		.R = 0xCD,
-		.G = 0xE8,
-		.B = 0xA3,
+		.R = 0x00,
+		.G = 0x00,
+		.B = 0x00,
 		.X = 0x00,
 	}
 };
@@ -95,16 +95,16 @@ struct font_color error_text_color =
 {
 	.color =
 	{
-		.R = 0xFF,
-		.G = 0xFF,
-		.B = 0x00,
+		.R = 0x98,
+		.G = 0xCD,
+		.B = 0x57,
 		.X = 0x00,
 	},
 	.outline =
 	{
-		.R = 0xCD,
-		.G = 0xE8,
-		.B = 0xA3,
+		.R = 0x00,
+		.G = 0x00,
+		.B = 0x00,
 		.X = 0x00,
 	}
 };
@@ -112,9 +112,9 @@ struct font_color error_text_color =
 /* Highlighting color */
 struct color highlight_color =
 {
-	.R = 0xCD,
-	.G = 0xE8,
-	.B = 0xA3,
+	.R = 0x98,
+	.G = 0xCD,
+	.B = 0x57,
 	.X = 0x00,
 };
 
@@ -130,9 +130,9 @@ struct font_color highlight_text_color =
 	},
 	.outline =
 	{
-		.R = 0xCD,
-		.G = 0xE8,
-		.B = 0xA3,
+		.R = 0x00,
+		.G = 0x00,
+		.B = 0x00,
 		.X = 0x00,
 	}
 };
