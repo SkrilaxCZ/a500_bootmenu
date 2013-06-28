@@ -137,6 +137,9 @@ extern enum boot_mode msc_boot_mode;
 /* Is key active */
 int get_key_active(enum key_type key);
 
+/* Haptic feedback */
+void haptic_feedback(int duration);
+
 /* Wait for key event */
 enum key_type wait_for_key_event(void);
 
@@ -165,6 +168,9 @@ void android_boot_from_partition(const char* partition, uint32_t ram_base);
 
 /* Boot Android image from parameter */
 void android_boot(struct boot_img_hdr* bootimg_data, uint32_t bootimg_size, uint32_t ram_base);
+
+/* Checks if we have secondary boot image */
+int akb_contains_boot_image();
 
 /* Load boot images */
 int load_boot_images(struct boot_selection_item* boot_items, struct boot_menu_item* menu_items, int max_items);

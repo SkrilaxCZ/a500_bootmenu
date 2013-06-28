@@ -27,6 +27,7 @@
 #include <framebuffer.h>
 #include <ext2fs.h>
 #include <bootimg.h>
+#include <atag.h>
 
 #define MENU_ID_CONTINUE      0
 #define MENU_ID_REBOOT        1
@@ -46,19 +47,8 @@ const char* bootloader_short_id = "V9";
 char extra_cmdline[1024];
 
 /* Boot menu items */
-struct boot_menu_item boot_menu_items[] =
-{
-	{ "Continue", MENU_ID_CONTINUE },
-	{ "Reboot", MENU_ID_REBOOT },
-	{ "Fastboot Mode", MENU_ID_FASTBOOT },
-	{ "Boot Primary Kernel Image", MENU_ID_BOOT },
-	{ "Boot Secondary Kernel Image", MENU_ID_SECBOOT },
-	{ "Boot Recovery", MENU_ID_RECOVERY },
-	{ "Set Default Kernel Image", MENU_ID_SETBOOT },
-	{ "" /* set in main */, MENU_ID_TOGGLE_DEBUG },
-	{ "" /* set in main */, MENU_ID_FORBID_EXT },
-	{ "Wipe Cache", MENU_ID_WIPE_CACHE },
-};
+struct boot_menu_item boot_menu_items[20];
+int boot_menu_items_length = 0;
 
 /* Menu file items */
 #define MENU_TITLE_PROP            "title"
@@ -171,6 +161,16 @@ int get_key_active(enum key_type key)
 }
 
 /*
+ * Haptic feedback
+ */
+void haptic_feedback(int duration)
+{
+	toggle_vibrator(1);
+	sleep(duration);
+	toggle_vibrator(0);
+}
+
+/*
  * Wait for key event
  */
 enum key_type wait_for_key_event(void)
@@ -188,13 +188,21 @@ enum key_type wait_for_key_event(void)
 	while (1)
 	{
 		if (get_key_active(KEY_VOLUME_DOWN))
+		{
+			haptic_feedback(20);
 			return KEY_VOLUME_DOWN;
+		}
 
 		if (get_key_active(KEY_VOLUME_UP))
+		{
+			haptic_feedback(20);
 			return KEY_VOLUME_UP;
+		}
 
 		if (get_key_active(KEY_POWER))
 		{
+			haptic_feedback(20);
+
 			/* Power key - act on releasing it */
 			while (get_key_active(KEY_POWER))
 				sleep(30);
@@ -224,13 +232,21 @@ enum key_type wait_for_key_event_timed(int* timeout)
 	while (1)
 	{
 		if (get_key_active(KEY_VOLUME_DOWN))
+		{
+			haptic_feedback(20);
 			return KEY_VOLUME_DOWN;
+		}
 
 		if (get_key_active(KEY_VOLUME_UP))
+		{
+			haptic_feedback(20);
 			return KEY_VOLUME_UP;
+		}
 
 		if (get_key_active(KEY_POWER))
 		{
+			haptic_feedback(20);
+
 			/* Power key - act on releasing it */
 			while (get_key_active(KEY_POWER))
 				sleep(30);
@@ -432,6 +448,49 @@ void configure_custom_cmdline(char* cmdline, int size)
 }
 
 /*
+ * Finalizes atags
+ */
+void finalize_atags()
+{
+	/* Add ATAG_NONE */
+	add_atag(ATAG_NONE, 0, NULL);
+}
+
+/*
+ * Checks if we have secondary boot image
+ */
+int akb_contains_boot_image()
+{
+	uint64_t partition_size;
+	char android_img_header[8];
+	int akb_pt_handle = -1;
+	uint32_t processed_bytes = 0;
+	int ret;
+
+/* Read from PT if AKB exists, if it does, add it */
+	if (get_partition_size("AKB", &partition_size) == 0)
+	{
+		/* Do we have Anroid boot image in there */
+		if (open_partition("AKB", PARTITION_OPEN_READ, &akb_pt_handle))
+			return 0;
+
+		ret = read_partition(akb_pt_handle, &android_img_header, sizeof(android_img_header), &processed_bytes);
+		close_partition(akb_pt_handle);
+
+		if (ret || processed_bytes != sizeof(android_img_header))
+			return 0;
+
+		if (memcmp(android_img_header, BOOT_MAGIC, sizeof(android_img_header)))
+			return 0;
+
+		/* Yup, we have it */
+		return 1;
+	}
+
+	return 0;
+}
+
+/*
  * Boots Android image from partition (returns on ERROR)
  */
 void android_boot_from_partition(const char* partition, uint32_t ram_base)
@@ -474,10 +533,6 @@ int load_boot_images(struct boot_selection_item* boot_items, struct boot_menu_it
 	int len, ret;
 	int have_akb = 0;
 	int num_items = 0;
-	uint64_t partition_size;
-	char android_img_header[8];
-	int akb_pt_handle = -1;
-	uint32_t processed_bytes = 0;
 	char boot_file_partition[8];
 	char section[64];
 	char line[256];
@@ -502,22 +557,10 @@ int load_boot_images(struct boot_selection_item* boot_items, struct boot_menu_it
 	menu_items[num_items].id = num_items;
 	num_items++;
 
-	/* Read from PT if AKB exists, if it does, add it */
-	if (get_partition_size("AKB", &partition_size) == 0)
+	have_akb = akb_contains_boot_image();
+
+	if (have_akb)
 	{
-		/* Do we have Anroid boot image in there */
-		if (open_partition("AKB", PARTITION_OPEN_READ, &akb_pt_handle))
-			goto akb_exit;
-
-		ret = read_partition(akb_pt_handle, &android_img_header, sizeof(android_img_header), &processed_bytes);
-		close_partition(akb_pt_handle);
-
-		if (ret || processed_bytes != sizeof(android_img_header))
-			goto akb_exit;
-
-		if (memcmp(android_img_header, BOOT_MAGIC, sizeof(android_img_header)))
-			goto akb_exit;
-
 		strncpy(boot_items[num_items].partition, "AKB", ARRAY_SIZE(boot_items[0].partition));
 		boot_items[num_items].partition[ARRAY_SIZE(boot_items[1].partition) - 1] = '\0';
 		boot_items[num_items].path_android[0] = '\0';
@@ -528,11 +571,9 @@ int load_boot_images(struct boot_selection_item* boot_items, struct boot_menu_it
 		menu_items[num_items].title = "Secondary (AKB)";
 		menu_items[num_items].id = num_items;
 		num_items++;
-		have_akb = 1;
 
 		printf("BOOTMENU: have akb partition\n");
 	}
-akb_exit:
 
 	/* If reading EXT filesystem is forbidden, quit here */
 	if ((msc_cmd.settings & MSC_SETTINGS_FORBID_EXT) || msc_cmd.boot_file[0] == '\0')
@@ -984,6 +1025,7 @@ void main(void* global_handle, uint32_t ram_base)
 	char error_message[TEXT_LINE_CHARS + 1];
 	const char* error_message_ptr;
 	int menu_selection;
+	int i, debug_item, extfs_boot_item;
 
 	error_message[0] = '\0';
 
@@ -1039,29 +1081,15 @@ void main(void* global_handle, uint32_t ram_base)
 	memset(msc_cmd.boot_command, 0, ARRAY_SIZE(msc_cmd.boot_command));
 	msc_cmd_write();
 
-	/* Set debug mode */
 	if (msc_cmd.settings & MSC_SETTINGS_DEBUG_MODE)
-	{
 		debug_mode_str = "Debug Mode: ON";
-		boot_menu_items[7].title = "Set Debug Mode OFF";
-	}
 	else
-	{
 		debug_mode_str = "Debug Mode: OFF";
-		boot_menu_items[7].title = "Set Debug Mode ON";
-	}
 
-	/* Set forbid ext */
 	if (msc_cmd.settings & MSC_SETTINGS_FORBID_EXT)
-	{
 		forbid_ext_str = "Booting from EXTFS: Forbidden";
-		boot_menu_items[8].title = "Allow booting from EXTFS";
-	}
 	else
-	{
 		forbid_ext_str = "Booting from EXTFS: Allowed";
-		boot_menu_items[8].title = "Forbid booting from EXTFS";
-	}
 
 	snprintf(status_msg, ARRAY_SIZE(status_msg), "%s\n%s", debug_mode_str, forbid_ext_str);
 
@@ -1115,7 +1143,65 @@ void main(void* global_handle, uint32_t ram_base)
 		/* Fastboot returned - show bootmenu */
 	}
 
-	/* Allright - now we're in bootmenu */
+	/* Allright - now we're in bootmenu, generate it first */
+	i = 0;
+
+	/* Continue */
+	boot_menu_items[i] = (struct boot_menu_item) { "Continue", MENU_ID_CONTINUE };
+	i++;
+
+	/* Reboot */
+	boot_menu_items[i] = (struct boot_menu_item) { "Reboot", MENU_ID_REBOOT };
+	i++;
+
+	/* Fastboot */
+	boot_menu_items[i] = (struct boot_menu_item) { "Fastboot Mode", MENU_ID_FASTBOOT };
+	i++;
+
+	/* Primary kernel */
+	boot_menu_items[i] = (struct boot_menu_item) { "Boot Primary Kernel Image", MENU_ID_BOOT };
+	i++;
+
+	/* Secondary kernel - if available */
+	if (akb_contains_boot_image())
+	{
+		boot_menu_items[i] = (struct boot_menu_item) { "Boot Secondary Kernel Image", MENU_ID_SECBOOT };
+		i++;
+	}
+
+	/* Recovery */
+	boot_menu_items[i] = (struct boot_menu_item) { "Boot Recovery", MENU_ID_RECOVERY };
+	i++;
+
+	/* Default kernel selection */
+	boot_menu_items[i] = (struct boot_menu_item) { "Set Default Kernel Image", MENU_ID_SETBOOT };
+	i++;
+
+	/* Debug mode */
+	boot_menu_items[i].id = MENU_ID_TOGGLE_DEBUG;
+	debug_item = i;
+	i++;
+
+	if (msc_cmd.settings & MSC_SETTINGS_DEBUG_MODE)
+		boot_menu_items[debug_item].title = "Set Debug Mode OFF";
+	else
+		boot_menu_items[debug_item].title = "Set Debug Mode ON";
+
+	/* EXTFS boot */
+	boot_menu_items[i].id = MENU_ID_TOGGLE_DEBUG;
+	extfs_boot_item = i;
+	i++;
+
+	if (msc_cmd.settings & MSC_SETTINGS_FORBID_EXT)
+		boot_menu_items[extfs_boot_item].title = "Allow booting from EXTFS";
+	else
+		boot_menu_items[extfs_boot_item].title = "Forbid booting from EXTFS";
+
+	/* Wipe cache */
+	boot_menu_items[i] = (struct boot_menu_item) { "Wipe Cache", MENU_ID_WIPE_CACHE };
+	i++;
+
+	boot_menu_items_length = i;
 
 	/* Boot menu */
 	while (1)
@@ -1129,7 +1215,7 @@ void main(void* global_handle, uint32_t ram_base)
 			error_message_ptr = error_message;
 
 		/* Check menu selection*/
-		menu_selection = show_menu(boot_menu_items, ARRAY_SIZE(boot_menu_items), 0, status_msg, error_message_ptr, 0);
+		menu_selection = show_menu(boot_menu_items, boot_menu_items_length, 0, status_msg, error_message_ptr, 0);
 
 		switch(menu_selection)
 		{
@@ -1185,12 +1271,12 @@ void main(void* global_handle, uint32_t ram_base)
 				if (msc_cmd.settings & MSC_SETTINGS_DEBUG_MODE)
 				{
 					debug_mode_str = "Debug Mode: ON";
-					boot_menu_items[7].title = "Set Debug Mode OFF";
+					boot_menu_items[debug_item].title = "Set Debug Mode OFF";
 				}
 				else
 				{
 					debug_mode_str = "Debug Mode: OFF";
-					boot_menu_items[7].title = "Set Debug Mode ON";
+					boot_menu_items[debug_item].title = "Set Debug Mode ON";
 				}
 
 				snprintf(status_msg, ARRAY_SIZE(status_msg), "%s\n%s", debug_mode_str, forbid_ext_str);
@@ -1207,12 +1293,12 @@ void main(void* global_handle, uint32_t ram_base)
 				if (msc_cmd.settings & MSC_SETTINGS_FORBID_EXT)
 				{
 					forbid_ext_str = "Booting from EXTFS: Forbidden";
-					boot_menu_items[8].title = "Allow booting from EXTFS";
+					boot_menu_items[extfs_boot_item].title = "Allow booting from EXTFS";
 				}
 				else
 				{
 					forbid_ext_str = "Booting from EXTFS: Allowed";
-					boot_menu_items[8].title = "Forbid booting from EXTFS";
+					boot_menu_items[extfs_boot_item].title = "Forbid booting from EXTFS";
 				}
 
 				snprintf(status_msg, ARRAY_SIZE(status_msg), "%s\n%s", debug_mode_str, forbid_ext_str);

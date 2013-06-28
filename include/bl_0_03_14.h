@@ -126,6 +126,9 @@ long int strtol(const char* str, char** endptr, int base);
 /* Get serial info */
 void get_serial_no(uint32_t* serial_no);
 
+/* Toggle vibrator */
+void toggle_vibrator(int state);
+
 /* Reboot */
 void reboot(void* global_handle);
 
@@ -138,6 +141,9 @@ int android_load_image(struct boot_img_hdr** bootimg_ptr, uint32_t* bootimg_size
 
 /* Boots Android image, returns in case of error */
 void android_boot_image(struct boot_img_hdr* bootimg, uint32_t bootimg_size, uint32_t ram_base);
+
+/* Adds an ATAG */
+int add_atag(uint32_t atag, uint32_t size, void* data);
 
 /*
  * Fastboot

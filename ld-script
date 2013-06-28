@@ -25,6 +25,7 @@ ENTRY(_main)
 ENTRY(_fb_compat_println)
 ENTRY(_fb_compat_println_error)
 ENTRY(_configure_custom_cmdline)
+ENTRY(_finalize_atags)
 ENTRY(_debug_write)
 SECTIONS
 {

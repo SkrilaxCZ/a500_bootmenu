@@ -79,6 +79,7 @@ int  NAKED get_partition_size(const char* partition, uint64_t* partition_size)  
 
 int      NAKED is_wifi_only()                                                                              { ASM_THUMB_B(0x10C5C0); }
 long int NAKED strtol(const char* str, char** endptr, int base)                                            { ASM_THUMB_B(0x1798A8); }
+void     toggle_vibrator(int state)                                                                        { ASM_THUMB_B(0x10C678); }
 
 /*
  * Fastboot
@@ -92,6 +93,7 @@ void NAKED fastboot_unload_handle(int fastboot_handle)                          
 
 int  NAKED android_load_image(struct boot_img_hdr** bootimg_ptr, uint32_t* bootimg_size, const char* partition)          { ASM_THUMB_B(0x10C898); }
 void NAKED android_boot_image(struct boot_img_hdr* bootimg, uint32_t bootimg_size, uint32_t ram_base)                    { ASM_THUMB_B(0x10CB40); }
+int  NAKED add_atag(uint32_t atag, uint32_t size, void* data)                                                            { ASM_THUMB_B(0x10F730); }
 
 /* ===========================================================================
  * ARM Mode functions

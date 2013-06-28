@@ -27,6 +27,7 @@
 .global _fb_compat_println
 .global _fb_compat_println_error
 .global _configure_custom_cmdline
+.global _finalize_atags
 .global _debug_write
 
 #Jumptable
@@ -45,6 +46,10 @@ _fb_compat_println_error:
 .align(2)
 _configure_custom_cmdline:
 	b.w    configure_custom_cmdline
+
+.align(2)
+_finalize_atags:
+	b.w    finalize_atags
 
 .arm
 
