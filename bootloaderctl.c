@@ -143,7 +143,12 @@ int main(int argc, char** argv)
 
 	int c, i, l, mode, image;
 
-	if (argc == 2 && !strcmp(argv[1], "--help"))
+	if (argc == 1)
+	{
+		error("No option specified!");
+		return 1;
+	}
+	else if (argc == 2 && !strcmp(argv[1], "--help"))
 	{
 		error(NULL);
 		return 0;
