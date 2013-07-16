@@ -23,10 +23,9 @@
  * It is a circular buffer to which vprintf stores.
  */
 
-#include <stddef.h>
-#include <stdarg.h>
-#include <bl_0_03_14.h>
-#include <framebuffer.h>
+#include "stdarg.h"
+#include "bl_0_03_14.h"
+#include "framebuffer.h"
 
 /* 16 kB buffer of debug text */
 char debug_text[16384];

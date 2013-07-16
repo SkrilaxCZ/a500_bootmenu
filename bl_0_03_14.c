@@ -30,8 +30,8 @@
  * This file contains only functions that are linked to the bootloader binary.
  */
 
-#include <bl_0_03_14.h>
-#include <bootimg.h>
+#include "bl_0_03_14.h"
+#include "bootimg.h"
 
 /* ===========================================================================
  * Thumb Mode functions

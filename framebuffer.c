@@ -19,11 +19,11 @@
  *
  */
 
-#include <stddef.h>
 #include <stdarg.h>
-#include <bl_0_03_14.h>
-#include <framebuffer.h>
-#include <jpeg.h>
+#include "stdlib.h"
+#include "bl_0_03_14.h"
+#include "framebuffer.h"
+#include "jpeg.h"
 
 #define SCREEN_WIDTH            1280
 #define SCREEN_HEIGHT           800

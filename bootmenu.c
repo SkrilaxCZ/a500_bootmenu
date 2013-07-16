@@ -19,15 +19,14 @@
  *
  */
 
-#include <stddef.h>
-#include <stdlib.h>
-#include <bl_0_03_14.h>
-#include <bootmenu.h>
-#include <fastboot.h>
-#include <framebuffer.h>
-#include <ext2fs.h>
-#include <bootimg.h>
-#include <atag.h>
+#include "stdlib.h"
+#include "bl_0_03_14.h"
+#include "bootmenu.h"
+#include "fastboot.h"
+#include "framebuffer.h"
+#include "ext2fs.h"
+#include "bootimg.h"
+#include "atag.h"
 
 #define MENU_ID_CONTINUE      0
 #define MENU_ID_REBOOT        1
@@ -765,7 +764,7 @@ fail_open:
 /*
  * Show interactive boot selection
  */
-void boot_interactively(int initial_selection, const char* message, const char* error, uint32_t ram_base, char* error_message, int error_message_size)
+void boot_interactively(unsigned char initial_selection, int force_initial, const char* message, const char* error, uint32_t ram_base, char* error_message, int error_message_size)
 {
 	struct boot_selection_item boot_items[20];
 	struct boot_menu_item menu_items[20];
@@ -799,14 +798,23 @@ void boot_interactively(int initial_selection, const char* message, const char* 
 		return;
 	}
 
-	/* Set message */
-	if (message)
-		snprintf(my_message, ARRAY_SIZE(my_message), "%s\nSelect boot image:", message);
-	else
-		snprintf(my_message, ARRAY_SIZE(my_message), "Select boot image:");
+	if (initial_selection == 0xFF)
+		initial_selection = num_items - 1;
 
-	/* show menu with cca 5 second timeout */
-	selected_item = show_menu(menu_items, num_items, initial_selection, my_message, error, 150);
+	/* Set message */
+	if (!force_initial || initial_selection < 0 || initial_selection >= num_items)
+	{
+
+		if (message)
+			snprintf(my_message, ARRAY_SIZE(my_message), "%s\nSelect boot image:", message);
+		else
+			snprintf(my_message, ARRAY_SIZE(my_message), "Select boot image:");
+
+		/* show menu with cca 5 second timeout */
+		selected_item = show_menu(menu_items, num_items, initial_selection, my_message, error, 150);
+	}
+	else
+		selected_item = initial_selection;
 
 	if (!strcmp(boot_items[selected_item].partition, "LNX"))
 	{
@@ -1025,7 +1033,7 @@ void main(void* global_handle, uint32_t ram_base)
 	char error_message[TEXT_LINE_CHARS + 1];
 	const char* error_message_ptr;
 	int menu_selection;
-	int i, debug_item, extfs_boot_item;
+	int i, debug_item, extfs_boot_item, boot_image, force_default;
 
 	error_message[0] = '\0';
 
@@ -1077,6 +1085,19 @@ void main(void* global_handle, uint32_t ram_base)
 	else if (get_key_active(KEY_VOLUME_DOWN))
 		this_boot_mode = BM_RECOVERY;
 
+	/* Check next boot settings */
+	if (msc_cmd.next_boot_image != 0xFF)
+	{
+		boot_image = msc_cmd.next_boot_image;
+		force_default = 1;
+		msc_cmd.next_boot_image = 0xFF;
+	}
+	else
+	{
+		boot_image = msc_cmd.boot_image;
+		force_default = 0;
+	}
+
 	/* Clear boot command from msc */
 	memset(msc_cmd.boot_command, 0, ARRAY_SIZE(msc_cmd.boot_command));
 	msc_cmd_write();
@@ -1101,7 +1122,7 @@ void main(void* global_handle, uint32_t ram_base)
 		else
 			error_message_ptr = error_message;
 
-		boot_interactively(msc_cmd.boot_image, status_msg, error_message_ptr, ram_base, error_message, ARRAY_SIZE(error_message));
+		boot_interactively(boot_image, force_default, status_msg, error_message_ptr, ram_base, error_message, ARRAY_SIZE(error_message));
 	}
 	else if (this_boot_mode == BM_RECOVERY)
 	{
@@ -1225,7 +1246,7 @@ void main(void* global_handle, uint32_t ram_base)
 				else
 					error_message_ptr = error_message;
 
-				boot_interactively(msc_cmd.boot_image, status_msg, error_message_ptr, ram_base, error_message, ARRAY_SIZE(error_message));
+				boot_interactively(msc_cmd.boot_image, 0, status_msg, error_message_ptr, ram_base, error_message, ARRAY_SIZE(error_message));
 				break;
 
 			case MENU_ID_REBOOT: /* Reboot */

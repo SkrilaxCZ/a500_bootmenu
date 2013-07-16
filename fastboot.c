@@ -19,16 +19,15 @@
  *
  */
 
-#include <stddef.h>
-#include <bl_0_03_14.h>
-#include <framebuffer.h>
-#include <bootmenu.h>
-#include <bootimg.h>
-#include <byteorder.h>
-#include <fastboot.h>
-#include <ext2fs.h>
-#include <stdlib.h>
-#include <debug.h>
+#include "bl_0_03_14.h"
+#include "framebuffer.h"
+#include "bootmenu.h"
+#include "bootimg.h"
+#include "byteorder.h"
+#include "fastboot.h"
+#include "ext2fs.h"
+#include "stdlib.h"
+#include "debug.h"
 
 #define FASTBOOT_VERSION               "0.4"
 #define FASTBOOT_SECURE                "no"
@@ -202,7 +201,19 @@ void fastboot_get_var_wifi_only(char* reply_buffer, int reply_buffer_size)
 /* Boot image (id) */
 void fastboot_get_var_boot_image_id(char* reply_buffer, int reply_buffer_size)
 {
-	snprintf(reply_buffer, reply_buffer_size, "%d", msc_cmd.boot_image);
+	if (msc_cmd.boot_image == 0xFF)
+		snprintf(reply_buffer, reply_buffer_size, "last");
+	else
+		snprintf(reply_buffer, reply_buffer_size, "%d", msc_cmd.boot_image);
+}
+
+/* Next Boot image (id) */
+void fastboot_get_var_next_boot_image_id(char* reply_buffer, int reply_buffer_size)
+{
+	if (msc_cmd.next_boot_image == 0xFF)
+		snprintf(reply_buffer, reply_buffer_size, "unset");
+	else
+		snprintf(reply_buffer, reply_buffer_size, "%d", msc_cmd.next_boot_image);
 }
 
 /* Boot image (name) */
@@ -321,6 +332,10 @@ struct fastboot_get_var_list_item fastboot_variable_table[] =
 		.var_handler = fastboot_get_var_boot_image_id,
 	},
 	{
+		.var_name = "next-boot-image-id",
+		.var_handler = fastboot_get_var_next_boot_image_id,
+	},
+	{
 		.var_name = "boot-image-name",
 		.var_handler = fastboot_get_var_boot_image_name,
 	},
@@ -433,6 +448,7 @@ int fastboot_oem_cmd_set_boot_image(int fastboot_handle, const char* args)
 {
 	int fastboot_status;
 	const char* info_reply_ok = FASTBOOT_RESP_INFO "Boot image set to: %d";
+	const char* info_reply_latest = FASTBOOT_RESP_INFO "Boot image set to: last";
 	const char* info_reply_bad = FASTBOOT_RESP_INFO "Invalid boot image";
 	char ok_reply_buffer[128];
 	long int boot_image;
@@ -443,7 +459,10 @@ int fastboot_oem_cmd_set_boot_image(int fastboot_handle, const char* args)
 		return fastboot_cmd_status(fastboot_status);
 	}
 
-	boot_image = strtol(args, NULL, 10);
+	if (!strcmp(args, "last"))
+		boot_image = 0xFF;
+	else
+		boot_image = strtol(args, NULL, 10);
 
 	if (boot_image < 0 || boot_image > 0xFF)
 	{
@@ -454,7 +473,48 @@ int fastboot_oem_cmd_set_boot_image(int fastboot_handle, const char* args)
 	msc_cmd.boot_image = (unsigned char)boot_image;
 	msc_cmd_write();
 
-	snprintf(ok_reply_buffer, ARRAY_SIZE(ok_reply_buffer), info_reply_ok, msc_cmd.boot_image);
+	if (msc_cmd.boot_image == 0xFF)
+		snprintf(ok_reply_buffer, ARRAY_SIZE(ok_reply_buffer), info_reply_latest);
+	else
+		snprintf(ok_reply_buffer, ARRAY_SIZE(ok_reply_buffer), info_reply_ok, msc_cmd.boot_image);
+	fastboot_status = fastboot_send(fastboot_handle, ok_reply_buffer, strlen(ok_reply_buffer));
+	return fastboot_cmd_status(fastboot_status);
+}
+
+/* Next boot image */
+int fastboot_oem_cmd_set_next_boot_image(int fastboot_handle, const char* args)
+{
+	int fastboot_status;
+	const char* info_reply_ok = FASTBOOT_RESP_INFO "Next boot image set to: %d";
+	const char* info_reply_none = FASTBOOT_RESP_INFO "Next boot image set to: unset";
+	const char* info_reply_bad = FASTBOOT_RESP_INFO "Invalid next boot image";
+	char ok_reply_buffer[128];
+	long int boot_image;
+
+	if (args[0] == '\0')
+	{
+		fastboot_status = fastboot_send(fastboot_handle, info_reply_bad, strlen(info_reply_bad));
+		return fastboot_cmd_status(fastboot_status);
+	}
+
+	if (!strcmp(args, "unset"))
+		boot_image = 0xFF;
+	else
+		boot_image = strtol(args, NULL, 10);
+
+	if (boot_image < 0 || boot_image > 0xFF)
+	{
+		fastboot_status = fastboot_send(fastboot_handle, info_reply_bad, strlen(info_reply_bad));
+		return fastboot_cmd_status(fastboot_status);
+	}
+
+	msc_cmd.next_boot_image = (unsigned char)boot_image;
+	msc_cmd_write();
+
+	if (msc_cmd.next_boot_image == 0xFF)
+		snprintf(ok_reply_buffer, ARRAY_SIZE(ok_reply_buffer), info_reply_none);
+	else
+		snprintf(ok_reply_buffer, ARRAY_SIZE(ok_reply_buffer), info_reply_ok, msc_cmd.next_boot_image);
 	fastboot_status = fastboot_send(fastboot_handle, ok_reply_buffer, strlen(ok_reply_buffer));
 	return fastboot_cmd_status(fastboot_status);
 }
@@ -862,6 +922,10 @@ struct fastboot_oem_cmd_list_item fastboot_oem_command_table[] =
 		.cmd_handler = &fastboot_oem_cmd_set_boot_image,
 	},
 	{
+		.cmd_name = "set-next-boot-image",
+		.cmd_handler = &fastboot_oem_cmd_set_next_boot_image,
+	},
+	{
 		.cmd_name = "set-boot-file",
 		.cmd_handler = &fastboot_oem_cmd_set_boot_file,
 	},
@@ -977,6 +1041,7 @@ void fastboot_main(void* global_handle, uint32_t ram_base, char* error_msg, int 
 	int fastboot_status, cmd_status;
 	int pt_handle, bootloader_flash;
 	int cmdlen, mycmdlen;
+	int boot_image, force_default;
 	int i;
 
 	/* Unindetified initialization functions */
@@ -1414,7 +1479,22 @@ void fastboot_main(void* global_handle, uint32_t ram_base, char* error_msg, int 
 					if (msc_boot_mode == BM_RECOVERY)
 						boot_recovery(ram_base);
 					else
-						boot_interactively(msc_cmd.boot_image, NULL, NULL, ram_base, NULL, 0);
+					{
+						/* Check next boot settings */
+						if (msc_cmd.next_boot_image != 0xFF)
+						{
+							boot_image = msc_cmd.next_boot_image;
+							force_default = 1;
+							msc_cmd.next_boot_image = 0xFF;
+							msc_cmd_write();
+						}
+						else
+						{
+							boot_image = msc_cmd.boot_image;
+							force_default = 0;
+						}
+						boot_interactively(boot_image, force_default, NULL, NULL, ram_base, NULL, 0);
+					}
 
 					/* Booting returned - back to bootmenu */
 					strncpy(error_msg, "ERROR: Booting kernel image from fastboot failed.", error_msg_size);

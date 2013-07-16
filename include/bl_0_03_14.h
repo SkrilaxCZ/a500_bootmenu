@@ -32,8 +32,8 @@
 #ifndef BL_0_03_14_H
 #define BL_0_03_14_H
 
-#include <stddef.h>
 #include <stdarg.h>
+#include "stdlib.h"
 
 #ifdef __thumb__
 

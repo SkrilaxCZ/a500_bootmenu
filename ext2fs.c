@@ -23,11 +23,10 @@
  *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <bl_0_03_14.h>
-#include <stdlib.h>
-#include <stddef.h>
-#include <ext2fs.h>
-#include <byteorder.h>
+#include "bl_0_03_14.h"
+#include "stdlib.h"
+#include "ext2fs.h"
+#include "byteorder.h"
 
 /* Magic value used to identify an ext2 filesystem.  */
 #define	EXT2_MAGIC             0xEF53

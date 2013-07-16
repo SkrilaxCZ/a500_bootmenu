@@ -19,10 +19,10 @@
  * along with GRUB.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stddef.h>
-#include <bl_0_03_14.h>
-#include <jpeg.h>
-#include <byteorder.h>
+#include "stdlib.h"
+#include "bl_0_03_14.h"
+#include "jpeg.h"
+#include "byteorder.h"
 
 #define JPEG_ESC_CHAR	    0xFF
 

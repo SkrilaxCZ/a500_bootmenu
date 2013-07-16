@@ -22,6 +22,8 @@
 #ifndef BOOTMENU_H
 #define BOOTMENU_H
 
+#include "bootimg.h"
+
 #define MSC_CMD_RECOVERY        "FOTA"
 #define MSC_CMD_FCTRY_RESET     "FactoryReset"
 #define MSC_CMD_FASTBOOT        "FastbootMode"
@@ -49,16 +51,24 @@ struct msc_command
 	 * 01 - AKB
 	 * 02 - first item parsed from boot file
 	 * 03 - second item parsed from boot file
+	 * FF - selects the last available boot image
 	 */
 	unsigned char boot_image;
 
-	/* Erase cache on boot */
-	unsigned char erase_cache;
+	/* Next boot image: write FF to ignore
+	 * otherwise overrides default selection for
+	 * next boot - using this will NOW show interactive boot
+	 * selection screen
+	 */
+	unsigned char next_boot_image;
 
 	/* Path to the boot file in BL format:
 	 * Example: UBN:/boot/menu.lst
 	 */
 	char boot_file[256];
+
+	/* Erase cache on boot */
+	unsigned char erase_cache;
 };
 
 /* How to boot */
@@ -176,7 +186,7 @@ int akb_contains_boot_image();
 int load_boot_images(struct boot_selection_item* boot_items, struct boot_menu_item* menu_items, int max_items);
 
 /* Show interactive boot selection */
-void boot_interactively(int initial_selection, const char* message, const char* error, uint32_t ram_base, char* error_message, int error_message_size);
+void boot_interactively(unsigned char initial_selection, int force_initial, const char* message, const char* error, uint32_t ram_base, char* error_message, int error_message_size);
 
 /* Set default boot image interactivey*/
 void set_default_boot_image(int initial_selection);

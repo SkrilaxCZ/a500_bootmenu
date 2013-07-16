@@ -19,10 +19,9 @@
 	*
 	*/
 
-#include <stddef.h>
-#include <stdlib.h>
-#include <bl_0_03_14.h>
-#include <bootimg.h>
+#include "stdlib.h"
+#include "bl_0_03_14.h"
+#include "bootimg.h"
 
 #define PAGE_SIZE 2048
 

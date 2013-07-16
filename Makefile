@@ -2,7 +2,9 @@
 # Makefile for bootmenu
 #
 
-CROSS-COMPILE ?= arm-elf-
+CROSS_COMPILE ?= arm-elf-
+LINUX_COMPILE ?= arm-linux-gnueabihf-
+ANDROID_COMPILE ?= arm-linux-androideabi-
 
 CC := $(CROSS_COMPILE)gcc
 LD := $(CROSS_COMPILE)ld
@@ -10,6 +12,12 @@ OBJCOPY := $(CROSS_COMPILE)objcopy
 
 HOST_CC := gcc
 HOST_CFLAGS :=
+
+LINUX_CC := $(LINUX_COMPILE)gcc
+LINUX_CFLAGS :=
+
+ANDROID_CC := $(ANDROID_COMPILE)gcc
+ANDROID_CFLAGS :=
 
 LIBGCC := -L $(shell dirname `$(CC) $(CFLAGS) -print-libgcc-file-name`) -lgcc
 
@@ -44,7 +52,7 @@ OUTPUT_DIR := $(shell cd $(O)/lib && /bin/pwd)
 $(if $(OUTPUT_DIR),,$(error output directory "$(O)/lib" does not exist))
 
 #Targets
-all: $(O)/$(BOOTLOADER).bin $(O)/$(BOOTLOADER).blob
+all: $(O)/$(BOOTLOADER).bin $(O)/$(BOOTLOADER).blob $(O)/bootloaderctl-linux $(O)/bootloaderctl-android
 
 $(O)/%.o : %.c
 	$(CC) $(THUMB_CFLAGS) -c $< -o $@
@@ -73,6 +81,12 @@ $(O)/blobmaker:
 	
 $(O)/$(BOOTLOADER).blob: $(O)/blobmaker $(O)/$(BOOTLOADER).bin
 	$(O)/blobmaker $(O)/$(BOOTLOADER).bin $@
+
+$(O)/bootloaderctl-linux: bootloaderctl.c
+	$(LINUX_CC) $(LINUX_CFLAGS) -Iinclude bootloaderctl.c -O2 -o $@
+
+$(O)/bootloaderctl-android: bootloaderctl.c
+	$(ANDROID_CC) $(ANDROID_CFLAGS) -Iinclude -DANDROID bootloaderctl.c -O2 -o $@
 
 .PHONY: prep
 
