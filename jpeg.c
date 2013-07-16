@@ -19,7 +19,7 @@
  * along with GRUB.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "stdlib.h"
+#include "mystdlib.h"
 #include "bl_0_03_14.h"
 #include "jpeg.h"
 #include "byteorder.h"

@@ -19,7 +19,7 @@
  *
  */
 
-#include "stdlib.h"
+#include "mystdlib.h"
 #include "bl_0_03_14.h"
 #include "bootmenu.h"
 #include "fastboot.h"

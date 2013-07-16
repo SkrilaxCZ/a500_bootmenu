@@ -33,7 +33,7 @@
 #define BL_0_03_14_H
 
 #include <stdarg.h>
-#include "stdlib.h"
+#include "mystdlib.h"
 
 #ifdef __thumb__
 

@@ -26,7 +26,7 @@
 #include "byteorder.h"
 #include "fastboot.h"
 #include "ext2fs.h"
-#include "stdlib.h"
+#include "mystdlib.h"
 #include "debug.h"
 
 #define FASTBOOT_VERSION               "0.4"

@@ -20,7 +20,7 @@
  */
 
 #include <stdarg.h>
-#include "stdlib.h"
+#include "mystdlib.h"
 #include "bl_0_03_14.h"
 #include "framebuffer.h"
 #include "jpeg.h"

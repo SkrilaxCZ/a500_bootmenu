@@ -22,7 +22,7 @@
  Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
  02111-1307 USA.  */
 
-#include "stdlib.h"
+#include "mystdlib.h"
 #include "bl_0_03_14.h"
 
 /* Find the first occurrence of C in S.  */

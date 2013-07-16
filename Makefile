@@ -30,7 +30,7 @@ AFLAGS := -D__ASSEMBLY__ -fno-builtin -march=armv7-a -mtune=cortex-a9 -mfloat-ab
 LDFLAGS := -static $(LIBGCC) -nostdlib --gc-sections 
 O ?= .
 
-LIB_OBJS := $(O)/lib/_ashldi3.o $(O)/lib/_ashrdi3.o  $(O)/lib/_div0.o $(O)/lib/_divsi3.o $(O)/lib/_lshrdi3.o $(O)/lib/_modsi3.o  $(O)/lib/_udivsi3.o $(O)/lib/_umodsi3.o $(O)/lib/stdlib.o  
+LIB_OBJS := $(O)/lib/_ashldi3.o $(O)/lib/_ashrdi3.o  $(O)/lib/_div0.o $(O)/lib/_divsi3.o $(O)/lib/_lshrdi3.o $(O)/lib/_modsi3.o  $(O)/lib/_udivsi3.o $(O)/lib/_umodsi3.o $(O)/lib/mystdlib.o
 BL_OBJS := $(O)/bl_0_03_14.o $(O)/framebuffer.o $(O)/jpeg.o $(O)/bootmenu.o $(O)/bootimg.o $(O)/fastboot.o $(O)/ext2fs.o
 ARM_OBJS := $(O)/debug.ao
 OBJS := $(O)/start.o $(LIB_OBJS) $(BL_OBJS) $(ARM_OBJS)
@@ -76,7 +76,7 @@ $(O)/$(BOOTLOADER).bin: $(O)/bootmenu.bin
 	dd if=bootlogo.jpg of=$@ bs=1 seek=643072 conv=notrunc
 	dd if=/dev/zero of=$@ bs=1 seek=622336 count=256 conv=notrunc
 
-$(O)/blobmaker:
+$(O)/blobmaker: blobmaker.c
 	$(HOST_CC) $(HOST_CFLAGS) blobmaker.c -o $@
 	
 $(O)/$(BOOTLOADER).blob: $(O)/blobmaker $(O)/$(BOOTLOADER).bin
@@ -94,6 +94,8 @@ $(O)/bootloaderctl-android: bootloaderctl.c
 clean:
 	rm -f $(OBJS)
 	rm -f $(O)/blobmaker
+	rm -f $(O)/bootloaderctl-linux
+	rm -f $(O)/bootloaderctl-android
 	rm -f $(O)/bootmenu.elf
 	rm -f $(O)/bootmenu.bin
 	rm -f $(O)/$(BOOTLOADER).bin

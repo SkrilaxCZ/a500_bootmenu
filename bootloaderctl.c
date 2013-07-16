@@ -20,7 +20,7 @@
  */
 
 #include <stdio.h>
-#include <stdlib.h>
+#include <stdint.h>
 #include <getopt.h>
 #include <string.h>
 #include "bootmenu.h"

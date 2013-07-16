@@ -24,7 +24,7 @@
  */
 
 #include "bl_0_03_14.h"
-#include "stdlib.h"
+#include "mystdlib.h"
 #include "ext2fs.h"
 #include "byteorder.h"
 

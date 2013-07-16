@@ -22,7 +22,7 @@
 #ifndef FRAMEBUFFER_H
 #define FRAMEBUFFER_H
 
-#include "stdlib.h"
+#include "mystdlib.h"
 
 #define TEXT_LINES          39
 #define TEXT_LINE_CHARS     60
