@@ -27,6 +27,7 @@
 #include "ext2fs.h"
 #include "bootimg.h"
 #include "atag.h"
+#include "generated.h"
 
 #define MENU_ID_CONTINUE      0
 #define MENU_ID_REBOOT        1
@@ -40,8 +41,8 @@
 #define MENU_ID_WIPE_CACHE    9
 
 /* Bootloader ID */
-const char* bootloader_id = "Skrilax_CZ's bootloader V9";
-const char* bootloader_short_id = "V9";
+const char* bootloader_title = "Skrilax_CZ's bootloader V9";
+const char* bootloader_short_id = "V9-" BOOTLOADER_GIT_REV;
 
 char extra_cmdline[1024];
 
@@ -1038,13 +1039,13 @@ void main(void* global_handle, uint32_t ram_base)
 	error_message[0] = '\0';
 
 	/* Write to the log */
-	printf("BOOTMENU: %s\n", bootloader_id);
+	printf("BOOTMENU: %s\n", bootloader_short_id);
 
 	/* Initialize framebuffer */
 	fb_init();
 
 	/* Set title */
-	fb_set_title(bootloader_id);
+	fb_set_title(bootloader_title);
 
 	/* Print it */
 	fb_refresh();
@@ -1112,7 +1113,7 @@ void main(void* global_handle, uint32_t ram_base)
 	else
 		forbid_ext_str = "Booting from EXTFS: Allowed";
 
-	snprintf(status_msg, ARRAY_SIZE(status_msg), "%s\n%s", debug_mode_str, forbid_ext_str);
+	snprintf(status_msg, ARRAY_SIZE(status_msg), "Bootloader Version: %s\n%s\n%s", bootloader_short_id, debug_mode_str, forbid_ext_str);
 
 	/* Evaluate boot mode */
 	if (this_boot_mode == BM_NORMAL)

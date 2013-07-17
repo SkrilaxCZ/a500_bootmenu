@@ -89,7 +89,7 @@ inline int fastboot_cmd_status(int status) { return status != 0 && status != 5; 
 /* Full Bootloader version */
 void fastboot_get_var_bootloader_id(char* reply_buffer, int reply_buffer_size)
 {
-	strncpy(reply_buffer, bootloader_id, reply_buffer_size);
+	strncpy(reply_buffer, bootloader_short_id, reply_buffer_size);
 	reply_buffer[reply_buffer_size - 1] = '\0';
 }
 
