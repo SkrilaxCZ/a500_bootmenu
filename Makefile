@@ -32,7 +32,7 @@ AFLAGS := -D__ASSEMBLY__ -fno-builtin -march=armv7-a -mtune=cortex-a9 -mfloat-ab
 LDFLAGS := -static $(LIBGCC) -nostdlib --gc-sections 
 
 LIB_OBJS := $(O)/lib/_ashldi3.o $(O)/lib/_ashrdi3.o  $(O)/lib/_div0.o $(O)/lib/_divsi3.o $(O)/lib/_lshrdi3.o $(O)/lib/_modsi3.o  $(O)/lib/_udivsi3.o $(O)/lib/_umodsi3.o $(O)/lib/mystdlib.o
-BL_OBJS := $(O)/bl_0_03_14.o $(O)/framebuffer.o $(O)/jpeg.o $(O)/bootmenu.o $(O)/bootimg.o $(O)/fastboot.o $(O)/ext2fs.o
+BL_OBJS := $(O)/bl_0_03_14.o $(O)/framebuffer.o $(O)/jpeg.o $(O)/bootmenu.go $(O)/bootimg.o $(O)/fastboot.o $(O)/ext2fs.o
 ARM_OBJS := $(O)/debug.ao
 OBJS := $(O)/start.o $(LIB_OBJS) $(BL_OBJS) $(ARM_OBJS)
 
@@ -72,6 +72,9 @@ $(O)/%.o: %.c
 
 $(O)/%.ao: %.c
 	$(CC) $(ARM_CFLAGS) -c $< -o $@
+
+$(O)/%.go: %.c $(O)/generated.h
+	$(CC) $(THUMB_CFLAGS) -c $< -o $@
 
 $(O)/%.o: %.S
 	$(CC) $(AFLAGS) -c $< -o $@

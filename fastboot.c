@@ -204,7 +204,7 @@ void fastboot_get_var_boot_image_id(char* reply_buffer, int reply_buffer_size)
 	if (msc_cmd.boot_image == 0xFF)
 		snprintf(reply_buffer, reply_buffer_size, "last");
 	else
-		snprintf(reply_buffer, reply_buffer_size, "%d", msc_cmd.boot_image);
+		snprintf(reply_buffer, reply_buffer_size, "%u", msc_cmd.boot_image);
 }
 
 /* Next Boot image (id) */
@@ -213,7 +213,7 @@ void fastboot_get_var_next_boot_image_id(char* reply_buffer, int reply_buffer_si
 	if (msc_cmd.next_boot_image == 0xFF)
 		snprintf(reply_buffer, reply_buffer_size, "unset");
 	else
-		snprintf(reply_buffer, reply_buffer_size, "%d", msc_cmd.next_boot_image);
+		snprintf(reply_buffer, reply_buffer_size, "%u", msc_cmd.next_boot_image);
 }
 
 /* Boot image (name) */
@@ -447,7 +447,7 @@ int fastboot_oem_cmd_sbk(int fastboot_handle, const char* args)
 int fastboot_oem_cmd_set_boot_image(int fastboot_handle, const char* args)
 {
 	int fastboot_status;
-	const char* info_reply_ok = FASTBOOT_RESP_INFO "Boot image set to: %d";
+	const char* info_reply_ok = FASTBOOT_RESP_INFO "Boot image set to: %u";
 	const char* info_reply_latest = FASTBOOT_RESP_INFO "Boot image set to: last";
 	const char* info_reply_bad = FASTBOOT_RESP_INFO "Invalid boot image";
 	char ok_reply_buffer[128];
@@ -485,7 +485,7 @@ int fastboot_oem_cmd_set_boot_image(int fastboot_handle, const char* args)
 int fastboot_oem_cmd_set_next_boot_image(int fastboot_handle, const char* args)
 {
 	int fastboot_status;
-	const char* info_reply_ok = FASTBOOT_RESP_INFO "Next boot image set to: %d";
+	const char* info_reply_ok = FASTBOOT_RESP_INFO "Next boot image set to: %u";
 	const char* info_reply_none = FASTBOOT_RESP_INFO "Next boot image set to: unset";
 	const char* info_reply_bad = FASTBOOT_RESP_INFO "Invalid next boot image";
 	char ok_reply_buffer[128];

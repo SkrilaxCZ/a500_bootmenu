@@ -1113,7 +1113,7 @@ void main(void* global_handle, uint32_t ram_base)
 	else
 		forbid_ext_str = "Booting from EXTFS: Allowed";
 
-	snprintf(status_msg, ARRAY_SIZE(status_msg), "Bootloader Version: %s\n%s\n%s", bootloader_short_id, debug_mode_str, forbid_ext_str);
+	snprintf(status_msg, ARRAY_SIZE(status_msg), "Version: %s\n%s\n%s", bootloader_short_id, debug_mode_str, forbid_ext_str);
 
 	/* Evaluate boot mode */
 	if (this_boot_mode == BM_NORMAL)

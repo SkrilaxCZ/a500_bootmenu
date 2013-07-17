@@ -32,7 +32,10 @@ fastboot getvar wifi-only
 - returns whether the tablet is A500 or A501
 
 fastboot getvar boot-image-id
-- returns current boot image as a number (0 - LNX partition, 1 - second entry, 2 - third entry etc.)
+- returns current boot image as a number (0 - LNX partition, 1 - second entry, 2 - third entry etc., last - last entry)
+
+fastboot getvar next-boot-image-id
+- returns next boot image as a number (0 - LNX partition, 1 - second entry, 2 - third entry etc., unset - default entry)
 
 fastboot getvar boot-image-name
 - returns current boot image as a name
@@ -53,8 +56,11 @@ Fastboot oem commands:
 fastboot oem sbk
 - displays your sbk on the screen
 
-fastboot oem set-boot-image %d
-- sets default boot image (0 - LNX partition, 1 - second entry, 2 - third entry etc.)
+fastboot oem set-boot-image %d|last
+- sets default boot image (0 - LNX partition, 1 - second entry, 2 - third entry etc., last - last entry)
+
+fastboot oem set-next-boot-image %d|unset
+- sets next boot image (0 - LNX partition, 1 - second entry, 2 - third entry etc., unset - unset)
 
 fastboot oem set-boot-file %s
 - sets the path to menu.skrilax file in BL format (see below)

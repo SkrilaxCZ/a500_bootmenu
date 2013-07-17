@@ -292,7 +292,7 @@ int main(int argc, char** argv)
 				get_option_possible = 0;
 				LOAD_MSC(cmd, dirty);
 
-				if (sscanf(optarg, "%d", &image) != 1)
+				if (sscanf(optarg, "%u", &image) != 1)
 				{
 					if (!strcmp(optarg, "last"))
 						image = 0xFF;
@@ -304,7 +304,7 @@ int main(int argc, char** argv)
 				}
 				else
 				{
-					if (image < 0 || image > 0xFF)
+					if (image > 0xFF)
 					{
 						error("Invalid boot image!");
 						return 1;
@@ -319,7 +319,7 @@ int main(int argc, char** argv)
 				get_option_possible = 0;
 				LOAD_MSC(cmd, dirty);
 
-				if (sscanf(optarg, "%d", &image) != 1)
+				if (sscanf(optarg, "%u", &image) != 1)
 				{
 					if (!strcmp(optarg, "unset"))
 						image = 0xFF;
@@ -331,7 +331,7 @@ int main(int argc, char** argv)
 				}
 				else
 				{
-					if (image < 0 || image > 0xFF)
+					if (image > 0xFF)
 					{
 						error("Invalid boot image!");
 						return 1;
