@@ -52,7 +52,13 @@ OUTPUT_DIR := $(shell cd $(O)/lib && /bin/pwd)
 $(if $(OUTPUT_DIR),,$(error output directory "$(O)/lib" does not exist))
 
 #Targets
-all: $(O)/$(BOOTLOADER).bin $(O)/$(BOOTLOADER).blob $(O)/bootloaderctl-linux $(O)/bootloaderctl-android
+ALL_DEPS := $(O)/$(BOOTLOADER).bin $(O)/$(BOOTLOADER).blob
+
+ifeq ($(NO_BOOTLOADERCTL),)
+	ALL_DEPS += $(O)/bootloaderctl-linux $(O)/bootloaderctl-android
+endif
+
+all: $(ALL_DEPS)
 
 $(O)/%.o : %.c
 	$(CC) $(THUMB_CFLAGS) -c $< -o $@
