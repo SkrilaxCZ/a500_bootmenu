@@ -1,5 +1,5 @@
 /*
- * Acer bootloader boot menu application main header.
+ * Acer bootloader boot menu application userspace util.
  *
  * Copyright (C) 2013 Skrilax_CZ
  *

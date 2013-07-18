@@ -468,7 +468,7 @@ int akb_contains_boot_image()
 	uint32_t processed_bytes = 0;
 	int ret;
 
-/* Read from PT if AKB exists, if it does, add it */
+	/* Read from PT if AKB exists, if it does, add it */
 	if (get_partition_size("AKB", &partition_size) == 0)
 	{
 		/* Do we have Anroid boot image in there */
@@ -761,7 +761,7 @@ int load_boot_images(struct boot_selection_item* boot_items, struct boot_menu_it
 	}
 
 	/* Push it if we have something */
-	if (section[0] != '\0' && strcmp(section, "LNX") && strcmp(section, "AKB"))
+	if (section[0] != '\0' && strcmp(section, "LNX") && strcmp(section, "AKB") && strcmp(section, "SOS"))
 	{
 		memcpy(&boot_items[num_items], &boot_current, sizeof(struct boot_selection_item));
 		memcpy(&menu_items[num_items], &menu_current, sizeof(struct boot_menu_item));
