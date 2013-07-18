@@ -273,6 +273,18 @@ void fastboot_get_var_forbid_ext(char* reply_buffer, int reply_buffer_size)
 	reply_buffer[reply_buffer_size - 1] = '\0';
 }
 
+void fastboot_get_var_show_fb_rec(char* reply_buffer, int reply_buffer_size)
+{
+	const char* repl;
+
+	if (msc_cmd.settings & MSC_SETTINGS_SHOW_FB_REC)
+		repl = "ON";
+	else
+		repl = "OFF";
+
+	strncpy(reply_buffer, repl, reply_buffer_size);
+	reply_buffer[reply_buffer_size - 1] = '\0';
+}
 
 /* Product */
 void fastboot_get_var_product(char* reply_buffer, int reply_buffer_size)
@@ -350,6 +362,10 @@ struct fastboot_get_var_list_item fastboot_variable_table[] =
 	{
 		.var_name = "forbid-ext",
 		.var_handler = &fastboot_get_var_forbid_ext,
+	},
+	{
+		.var_name = "show-fb-rec",
+		.var_handler = &fastboot_get_var_show_fb_rec,
 	},
 	{
 		.var_name = "product",
@@ -609,6 +625,36 @@ int fastboot_oem_cmd_forbid_ext(int fastboot_handle, const char* args)
 	else if (!strcmp(args, "off"))
 	{
 		msc_cmd.settings &= ~MSC_SETTINGS_FORBID_EXT;
+		msc_cmd_write();
+
+		reply = info_reply_off;
+	}
+	else
+		reply = info_reply_bad;
+
+	fastboot_status = fastboot_send(fastboot_handle, reply, strlen(reply));
+	return fastboot_cmd_status(fastboot_status);
+}
+
+/* Set show boot / recovery in selection screen */
+int fastboot_oem_cmd_set_show_fb_rec(int fastboot_handle, const char* args)
+{
+	int fastboot_status;
+	const char* info_reply_on = FASTBOOT_RESP_INFO "Showing fastboot / recovery in selection screen!";
+	const char* info_reply_off = FASTBOOT_RESP_INFO "Fastboot / recovery in selection screen is hidden!";
+	const char* info_reply_bad = FASTBOOT_RESP_INFO "Invalid argument!";
+	const char* reply;
+
+	if (!strcmp(args, "on"))
+	{
+		msc_cmd.settings |= MSC_SETTINGS_SHOW_FB_REC;
+		msc_cmd_write();
+
+		reply = info_reply_on;
+	}
+	else if (!strcmp(args, "off"))
+	{
+		msc_cmd.settings &= ~MSC_SETTINGS_SHOW_FB_REC;
 		msc_cmd_write();
 
 		reply = info_reply_off;
@@ -957,6 +1003,10 @@ struct fastboot_oem_cmd_list_item fastboot_oem_command_table[] =
 	{
 		.cmd_name = "set-forbid-ext",
 		.cmd_handler = &fastboot_oem_cmd_forbid_ext,
+	},
+	{
+		.cmd_name = "set-show-fb-rec",
+		.cmd_handler = &fastboot_oem_cmd_set_show_fb_rec,
 	},
 	{
 		.cmd_name = "lock",
@@ -1520,7 +1570,7 @@ void fastboot_main(void* global_handle, uint32_t ram_base, char* error_msg, int 
 							boot_image = msc_cmd.boot_image;
 							force_default = 0;
 						}
-						boot_interactively(boot_image, force_default, NULL, NULL, ram_base, NULL, 0);
+						boot_interactively(boot_image, force_default, 1, NULL, NULL, ram_base, NULL, 0);
 					}
 
 					/* Booting returned - back to bootmenu */

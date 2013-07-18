@@ -38,7 +38,8 @@
 #define MENU_ID_SETBOOT       6
 #define MENU_ID_TOGGLE_DEBUG  7
 #define MENU_ID_FORBID_EXT    8
-#define MENU_ID_WIPE_CACHE    9
+#define MENU_ID_SHOW_FB_REC   9
+#define MENU_ID_WIPE_CACHE   10
 
 /* Bootloader ID */
 const char* bootloader_title = "Skrilax_CZ's bootloader V9";
@@ -528,7 +529,7 @@ void android_boot(struct boot_img_hdr* bootimg_data, uint32_t bootimg_size, uint
 /*
  * Load boot images
  */
-int load_boot_images(struct boot_selection_item* boot_items, struct boot_menu_item* menu_items, int max_items)
+int load_boot_images(struct boot_selection_item* boot_items, struct boot_menu_item* menu_items, int max_items, char* recovery_name, int recovery_name_size)
 {
 	int len, ret;
 	int have_akb = 0;
@@ -633,8 +634,8 @@ int load_boot_images(struct boot_selection_item* boot_items, struct boot_menu_it
 				ptr++;
 				*ptr2 = '\0';
 
-				/* Push the item (and it's not LNX or AKB) */
-				if (section[0] != '\0' && strcmp(section, "LNX") && strcmp(section, "AKB"))
+				/* Push the item (and it's not LNX, AKB or SOS) */
+				if (section[0] != '\0' && strcmp(section, "LNX") && strcmp(section, "AKB") && strcmp(section, "SOS"))
 				{
 					memcpy(&boot_items[num_items], &boot_current, sizeof(struct boot_selection_item));
 					memcpy(&menu_items[num_items], &menu_current, sizeof(struct boot_menu_item));
@@ -675,7 +676,7 @@ int load_boot_images(struct boot_selection_item* boot_items, struct boot_menu_it
 			ptr2--;
 		}
 
-		/* Handle AKB and LNX section specially */
+		/* Handle AKB, LNX and SOS section specially */
 		if (!strcmp(section, "LNX"))
 		{
 			/* Title only */
@@ -701,6 +702,21 @@ int load_boot_images(struct boot_selection_item* boot_items, struct boot_menu_it
 					strncpy(boot_items[1].title, ptr2, ARRAY_SIZE(boot_items[1].title));
 					boot_items[1].title[ARRAY_SIZE(boot_items[1].title) - 1] = '\0';
 					menu_items[1].title = boot_items[1].title;
+				}
+			}
+			continue;
+		}
+
+		if (!strcmp(section, "SOS"))
+		{
+			if (recovery_name && recovery_name_size > 0)
+			{
+				/* Title only */
+				if (!strncmp(ptr, MENU_TITLE_PROP "=", strlen(MENU_TITLE_PROP "=")))
+				{
+					ptr2 = &ptr[strlen(MENU_TITLE_PROP "=")];
+					strncpy(recovery_name, ptr2, recovery_name_size);
+					recovery_name[recovery_name_size - 1] = '\0';
 				}
 			}
 			continue;
@@ -765,15 +781,18 @@ fail_open:
 /*
  * Show interactive boot selection
  */
-void boot_interactively(unsigned char initial_selection, int force_initial, const char* message, const char* error, uint32_t ram_base, char* error_message, int error_message_size)
+void boot_interactively(unsigned char initial_selection, int force_initial, int no_fastboot, const char* message, const char* error, 
+                        uint32_t ram_base, char* error_message, int error_message_size)
 {
 	struct boot_selection_item boot_items[20];
 	struct boot_menu_item menu_items[20];
 	int num_items, selected_item;
 	const char* boot_status;
 	char my_message[256];
+	char recovery_name[256];
 
-	num_items = load_boot_images(boot_items, menu_items, ARRAY_SIZE(boot_items));
+	recovery_name[0] = '\0';
+	num_items = load_boot_images(boot_items, menu_items, ARRAY_SIZE(boot_items), recovery_name, ARRAY_SIZE(recovery_name));
 
 	if (num_items == 0)
 	{
@@ -802,10 +821,42 @@ void boot_interactively(unsigned char initial_selection, int force_initial, cons
 	if (initial_selection == 0xFF)
 		initial_selection = num_items - 1;
 
+	/* Recovery & Fastboot */
+	if (msc_cmd.settings & MSC_SETTINGS_SHOW_FB_REC)
+	{
+		if (num_items < ARRAY_SIZE(boot_items))
+		{
+			strncpy(boot_items[num_items].partition, "SOS", ARRAY_SIZE(boot_items[0].partition));
+			boot_items[num_items].partition[ARRAY_SIZE(boot_items[1].partition) - 1] = '\0';
+
+			if (recovery_name[0] == '\0')
+				strncpy(boot_items[num_items].title, "Recovery", ARRAY_SIZE(boot_items[num_items].title));
+			else
+				strncpy(boot_items[num_items].title, recovery_name, ARRAY_SIZE(boot_items[num_items].title));
+			boot_items[num_items].title[ARRAY_SIZE(boot_items[num_items].title) - 1] = '\0';
+
+			menu_items[num_items].title = boot_items[num_items].title;
+			menu_items[num_items].id = num_items;
+			num_items++;
+		}
+
+		if (!no_fastboot && num_items < ARRAY_SIZE(boot_items))
+		{
+			strncpy(boot_items[num_items].partition, "EBT", ARRAY_SIZE(boot_items[0].partition));
+			boot_items[num_items].partition[ARRAY_SIZE(boot_items[1].partition) - 1] = '\0';
+
+			strncpy(boot_items[num_items].title, "Fastboot", ARRAY_SIZE(boot_items[num_items].title));
+			boot_items[num_items].title[ARRAY_SIZE(boot_items[num_items].title) - 1] = '\0';
+
+			menu_items[num_items].title = boot_items[num_items].title;
+			menu_items[num_items].id = num_items;
+			num_items++;
+		}
+	}
+
 	/* Set message */
 	if (!force_initial || initial_selection < 0 || initial_selection >= num_items)
 	{
-
 		if (message)
 			snprintf(my_message, ARRAY_SIZE(my_message), "%s\nSelect boot image:", message);
 		else
@@ -834,6 +885,20 @@ void boot_interactively(unsigned char initial_selection, int force_initial, cons
 			strncpy(error_message, "ERROR: Invalid secondary (AKB) kernel image.", error_message_size);
 			error_message[error_message_size - 1] = '\0';
 		}
+	}
+	else if (!strcmp(boot_items[selected_item].partition, "SOS"))
+	{
+		boot_status = "Booting recovery kernel image";
+		if (error_message)
+		{
+			strncpy(error_message, "ERROR: Invalid recovery (SOS) kernel image.", error_message_size);
+			error_message[error_message_size - 1] = '\0';
+		}
+	}
+	else if (!strcmp(boot_items[selected_item].partition, "EBT"))
+	{
+		this_boot_mode = BM_FASTBOOT;
+		return;
 	}
 	else
 	{
@@ -1005,7 +1070,7 @@ void set_default_boot_image(int initial_selection)
 	int num_items = 0;
 	int selected_item;
 
-	num_items = load_boot_images(boot_items, menu_items, ARRAY_SIZE(boot_items));
+	num_items = load_boot_images(boot_items, menu_items, ARRAY_SIZE(boot_items), NULL, 0);
 
 	/* show the menu */
 	selected_item = show_menu(menu_items, num_items, initial_selection, "Select default boot image:", NULL, 0);
@@ -1034,7 +1099,7 @@ void main(void* global_handle, uint32_t ram_base)
 	char error_message[TEXT_LINE_CHARS + 1];
 	const char* error_message_ptr;
 	int menu_selection;
-	int i, debug_item, extfs_boot_item, boot_image, force_default;
+	int i, debug_item, extfs_boot_item, show_fb_rec_item, boot_image, force_default;
 
 	error_message[0] = '\0';
 
@@ -1123,7 +1188,10 @@ void main(void* global_handle, uint32_t ram_base)
 		else
 			error_message_ptr = error_message;
 
-		boot_interactively(boot_image, force_default, status_msg, error_message_ptr, ram_base, error_message, ARRAY_SIZE(error_message));
+		boot_interactively(boot_image, force_default, 0, status_msg, error_message_ptr, ram_base, error_message, ARRAY_SIZE(error_message));
+		/* It could have switched to fastboot */
+		if (this_boot_mode == BM_FASTBOOT)
+			fastboot_main(global_handle, ram_base, error_message, ARRAY_SIZE(error_message));
 	}
 	else if (this_boot_mode == BM_RECOVERY)
 	{
@@ -1219,6 +1287,16 @@ void main(void* global_handle, uint32_t ram_base)
 	else
 		boot_menu_items[extfs_boot_item].title = "Forbid booting from EXTFS";
 
+	/* Showing fastboot / recovery in selection screen */
+	boot_menu_items[i].id = MENU_ID_SHOW_FB_REC;
+	show_fb_rec_item = i;
+	i++;
+
+	if (msc_cmd.settings & MSC_SETTINGS_SHOW_FB_REC)
+		boot_menu_items[show_fb_rec_item].title = "Hide Fastboot / Recovery in Selection Screen";
+	else
+		boot_menu_items[show_fb_rec_item].title = "Show Fastboot / Recovery in Selection Screen";
+
 	/* Wipe cache */
 	boot_menu_items[i] = (struct boot_menu_item) { "Wipe Cache", MENU_ID_WIPE_CACHE };
 	i++;
@@ -1247,7 +1325,10 @@ void main(void* global_handle, uint32_t ram_base)
 				else
 					error_message_ptr = error_message;
 
-				boot_interactively(msc_cmd.boot_image, 0, status_msg, error_message_ptr, ram_base, error_message, ARRAY_SIZE(error_message));
+				boot_interactively(msc_cmd.boot_image, 0, 0, status_msg, error_message_ptr, ram_base, error_message, ARRAY_SIZE(error_message));
+				/* It could have switched to fastboot */
+				if (this_boot_mode == BM_FASTBOOT)
+					fastboot_main(global_handle, ram_base, error_message, ARRAY_SIZE(error_message));
 				break;
 
 			case MENU_ID_REBOOT: /* Reboot */
@@ -1301,8 +1382,7 @@ void main(void* global_handle, uint32_t ram_base)
 					boot_menu_items[debug_item].title = "Set Debug Mode ON";
 				}
 
-				snprintf(status_msg, ARRAY_SIZE(status_msg), "%s\n%s", debug_mode_str, forbid_ext_str);
-
+				snprintf(status_msg, ARRAY_SIZE(status_msg), "Version: %s\n%s\n%s", bootloader_id, debug_mode_str, forbid_ext_str);
 				break;
 
 			case MENU_ID_FORBID_EXT: /* Set forbid ext */
@@ -1323,8 +1403,21 @@ void main(void* global_handle, uint32_t ram_base)
 					boot_menu_items[extfs_boot_item].title = "Forbid booting from EXTFS";
 				}
 
-				snprintf(status_msg, ARRAY_SIZE(status_msg), "%s\n%s", debug_mode_str, forbid_ext_str);
+				snprintf(status_msg, ARRAY_SIZE(status_msg), "Version: %s\n%s\n%s", bootloader_id, debug_mode_str, forbid_ext_str);
+				break;
 
+			case MENU_ID_SHOW_FB_REC:
+				if (msc_cmd.settings & MSC_SETTINGS_SHOW_FB_REC)
+					msc_cmd.settings &= ~MSC_SETTINGS_SHOW_FB_REC;
+				else
+					msc_cmd.settings |= MSC_SETTINGS_SHOW_FB_REC;
+				msc_cmd_write();
+				printf("BOOTMENU: Show fastboot / recovery %d\n", ((msc_cmd.settings & MSC_SETTINGS_SHOW_FB_REC) != 0));
+
+				if (msc_cmd.settings & MSC_SETTINGS_SHOW_FB_REC)
+					boot_menu_items[show_fb_rec_item].title = "Hide Fastboot / Recovery in Selection Screen";
+				else
+					boot_menu_items[show_fb_rec_item].title = "Show Fastboot / Recovery in Selection Screen";
 				break;
 
 			case MENU_ID_WIPE_CACHE: /* Wipe cache */

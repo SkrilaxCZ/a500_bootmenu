@@ -29,8 +29,9 @@
 #define MSC_CMD_FASTBOOT        "FastbootMode"
 #define MSC_CMD_BOOTMENU        "BootmenuMode"
 
-#define MSC_SETTINGS_DEBUG_MODE 0x00000001
-#define MSC_SETTINGS_FORBID_EXT 0x00000002
+#define MSC_SETTINGS_DEBUG_MODE  0x00000001
+#define MSC_SETTINGS_FORBID_EXT  0x00000002
+#define MSC_SETTINGS_SHOW_FB_REC 0x00000004
 
 /* MSC command */
 struct msc_command
@@ -184,10 +185,11 @@ void android_boot(struct boot_img_hdr* bootimg_data, uint32_t bootimg_size, uint
 int akb_contains_boot_image();
 
 /* Load boot images */
-int load_boot_images(struct boot_selection_item* boot_items, struct boot_menu_item* menu_items, int max_items);
+int load_boot_images(struct boot_selection_item* boot_items, struct boot_menu_item* menu_items, int max_items, char* recovery_name, int recovery_name_size);
 
 /* Show interactive boot selection */
-void boot_interactively(unsigned char initial_selection, int force_initial, const char* message, const char* error, uint32_t ram_base, char* error_message, int error_message_size);
+void boot_interactively(unsigned char initial_selection, int force_initial, int no_fastboot, const char* message, const char* error,
+                        uint32_t ram_base, char* error_message, int error_message_size);
 
 /* Set default boot image interactivey*/
 void set_default_boot_image(int initial_selection);
