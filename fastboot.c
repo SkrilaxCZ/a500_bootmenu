@@ -621,7 +621,7 @@ int fastboot_oem_cmd_forbid_ext(int fastboot_handle, const char* args)
 }
 
 /* Lock (cough cough) */
-int fastboot_oem_cmd_oem_lock(int fastboot_handle, const char* args)
+int fastboot_oem_cmd_lock(int fastboot_handle, const char* args)
 {
 	int fastboot_status;
 	const char* info_reply = FASTBOOT_RESP_INFO "Seriously, are you kidding me?"; /* Tsk :D */
@@ -631,12 +631,33 @@ int fastboot_oem_cmd_oem_lock(int fastboot_handle, const char* args)
 }
 
 /* Unlock */
-int fastboot_oem_cmd_oem_unlock(int fastboot_handle, const char* args)
+int fastboot_oem_cmd_unlock(int fastboot_handle, const char* args)
 {
 	int fastboot_status;
 	const char* info_reply = FASTBOOT_RESP_INFO "Already unlocked.";
 
 	fastboot_status = fastboot_send(fastboot_handle, info_reply, strlen(info_reply));
+	return fastboot_cmd_status(fastboot_status);
+}
+
+/* Dump all variables */
+int fastboot_oem_cmd_all_vars(int fastboot_handle, const char* args)
+{
+	int fastboot_status, i, len;
+	char reply_buffer[0x100];
+	char* ptr;
+
+	for (i = 0; i < ARRAY_SIZE(fastboot_variable_table); i++)
+	{
+		snprintf(reply_buffer, ARRAY_SIZE(reply_buffer), FASTBOOT_RESP_INFO "%s: ", fastboot_variable_table[i].var_name);
+		len = strlen(reply_buffer);
+		ptr = &(reply_buffer[len]);
+		fastboot_variable_table[i].var_handler(ptr, ARRAY_SIZE(reply_buffer) - len);
+		fastboot_status = fastboot_send(fastboot_handle, reply_buffer, strlen(reply_buffer));
+		if (fastboot_cmd_status(fastboot_status))
+			return fastboot_cmd_status(fastboot_status);
+	}
+	
 	return fastboot_cmd_status(fastboot_status);
 }
 
@@ -939,11 +960,15 @@ struct fastboot_oem_cmd_list_item fastboot_oem_command_table[] =
 	},
 	{
 		.cmd_name = "lock",
-		.cmd_handler = &fastboot_oem_cmd_oem_lock,
+		.cmd_handler = &fastboot_oem_cmd_lock,
 	},
 	{
 		.cmd_name = "unlock",
-		.cmd_handler = &fastboot_oem_cmd_oem_unlock,
+		.cmd_handler = &fastboot_oem_cmd_unlock,
+	},
+	{
+		.cmd_name = "all-vars",
+		.cmd_handler = &fastboot_oem_cmd_all_vars,
 	},
 #ifdef BOOTLOADER_ENABLE_DEBUG
 	{
