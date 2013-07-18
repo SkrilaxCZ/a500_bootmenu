@@ -132,7 +132,7 @@ enum key_type
 
 /* Bootloader ID */
 extern const char* bootloader_title;
-extern const char* bootloader_short_id;
+extern const char* bootloader_id;
 
 /* MSC command */
 extern struct msc_command msc_cmd;

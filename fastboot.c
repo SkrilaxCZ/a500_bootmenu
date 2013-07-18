@@ -89,7 +89,7 @@ inline int fastboot_cmd_status(int status) { return status != 0 && status != 5; 
 /* Full Bootloader version */
 void fastboot_get_var_bootloader_id(char* reply_buffer, int reply_buffer_size)
 {
-	strncpy(reply_buffer, bootloader_short_id, reply_buffer_size);
+	strncpy(reply_buffer, bootloader_id, reply_buffer_size);
 	reply_buffer[reply_buffer_size - 1] = '\0';
 }
 
@@ -1032,6 +1032,7 @@ void fastboot_main(void* global_handle, uint32_t ram_base, char* error_msg, int 
 	int fastboot_handle, fastboot_init, fastboot_error;
 	char cmd_buffer[0x100];
 	char reply_buffer[0x100];
+	char status_buffer[0x40];
 	char* cmd_pointer = cmd_buffer;
 	char* reply_pointer = reply_buffer;
 	const char* partition = NULL;
@@ -1049,7 +1050,8 @@ void fastboot_main(void* global_handle, uint32_t ram_base, char* error_msg, int 
 	fastboot_init_unk1();
 
 	/* Set status */
-	fb_set_status("Fastboot Mode");
+	snprintf(status_buffer, ARRAY_SIZE(status_buffer), "Fastboot Mode, Version %s", bootloader_id);
+	fb_set_status(status_buffer);
 	fb_clear();
 	fb_refresh();
 

@@ -42,7 +42,7 @@
 
 /* Bootloader ID */
 const char* bootloader_title = "Skrilax_CZ's bootloader V9";
-const char* bootloader_short_id = "V9-" BOOTLOADER_GIT_REV;
+const char* bootloader_id = "V9-" BOOTLOADER_GIT_REV;
 
 char extra_cmdline[1024];
 
@@ -444,7 +444,7 @@ void configure_custom_cmdline(char* cmdline, int size)
 	}
 
 	/* Bootloader ID */
-	snprintf(cmdline, size, "skrilax.bootloader=%s ", bootloader_short_id);
+	snprintf(cmdline, size, "skrilax.bootloader=%s ", bootloader_id);
 }
 
 /*
@@ -1039,7 +1039,7 @@ void main(void* global_handle, uint32_t ram_base)
 	error_message[0] = '\0';
 
 	/* Write to the log */
-	printf("BOOTMENU: %s\n", bootloader_short_id);
+	printf("BOOTMENU: %s\n", bootloader_id);
 
 	/* Initialize framebuffer */
 	fb_init();
@@ -1113,7 +1113,7 @@ void main(void* global_handle, uint32_t ram_base)
 	else
 		forbid_ext_str = "Booting from EXTFS: Allowed";
 
-	snprintf(status_msg, ARRAY_SIZE(status_msg), "Version: %s\n%s\n%s", bootloader_short_id, debug_mode_str, forbid_ext_str);
+	snprintf(status_msg, ARRAY_SIZE(status_msg), "Version: %s\n%s\n%s", bootloader_id, debug_mode_str, forbid_ext_str);
 
 	/* Evaluate boot mode */
 	if (this_boot_mode == BM_NORMAL)
