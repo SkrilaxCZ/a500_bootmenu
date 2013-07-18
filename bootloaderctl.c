@@ -143,7 +143,7 @@ int main(int argc, char** argv)
 	char array[0x100];
 	char* ptr;
 
-	int c, i, l, mode, image;
+	int c, i, l, image;
 
 	if (argc == 1)
 	{
@@ -271,24 +271,23 @@ int main(int argc, char** argv)
 				LOAD_MSC(cmd, dirty);
 
 				if (!strcmp(optarg, "DEBUG_ON"))
-					mode |= MSC_SETTINGS_DEBUG_MODE;
+					cmd.settings |= MSC_SETTINGS_DEBUG_MODE;
 				else if (!strcmp(optarg, "DEBUG_OFF"))
-					mode &= ~MSC_SETTINGS_DEBUG_MODE;
+					cmd.settings &= ~MSC_SETTINGS_DEBUG_MODE;
 				else if (!strcmp(optarg, "NOEXT4_ON"))
-					mode |= MSC_SETTINGS_FORBID_EXT;
+					cmd.settings |= MSC_SETTINGS_FORBID_EXT;
 				else if (!strcmp(optarg, "NOEXT4_OFF"))
-					mode &= ~MSC_SETTINGS_FORBID_EXT;
+					cmd.settings &= ~MSC_SETTINGS_FORBID_EXT;
 				else if (!strcmp(optarg, "SHOW_FB_REC_ON"))
-					mode |= MSC_SETTINGS_SHOW_FB_REC;
+					cmd.settings |= MSC_SETTINGS_SHOW_FB_REC;
 				else if (!strcmp(optarg, "SHOW_FB_REC_OFF"))
-					mode &= ~MSC_SETTINGS_SHOW_FB_REC;
+					cmd.settings &= ~MSC_SETTINGS_SHOW_FB_REC;
 				else
 				{
 					error("Invalid bootloader settings!");
 					return 1;
 				}
 
-				cmd.settings = mode;
 				dirty = 1;
 				break;
 
