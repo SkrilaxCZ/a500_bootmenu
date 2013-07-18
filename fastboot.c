@@ -224,7 +224,7 @@ void fastboot_get_var_boot_image_name(char* reply_buffer, int reply_buffer_size)
 	int num_items;
 	const char* repl;
 
-	num_items = load_boot_images(boot_items, menu_items, ARRAY_SIZE(boot_items));
+	num_items = load_boot_images(boot_items, menu_items, ARRAY_SIZE(boot_items), NULL, 0);
 
 	if (msc_cmd.boot_image >= num_items)
 		repl = menu_items[0].title;
