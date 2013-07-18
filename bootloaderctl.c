@@ -60,10 +60,12 @@ const char* desc_options[] =
 	/* Set options */
 	"Sets the boot command with the one specified in the argument.",
 	"Sets the bootloader settings:\n"
-		"\tBL_NORMAL:       Debug mode off, EXT4 boot allowed\n"
-		"\tBL_DEBUG:        Debug mode on,  EXT4 boot allowed\n"
-		"\tBL_NOEXT4:       Debug mode off, EXT4 boot forbidden\n"
-		"\tBL_DEBUG_NOEXT4: Debug mode on,  EXT4 boot forbidden\n",
+		"\tDEBUG_OFF:       Debug mode off\n"
+		"\tDEBUG_ON:        Debug mode on\n"
+		"\tNOEXT4_OFF:      EXT4 boot allowed\n"
+		"\tNOEXT4_ON:       EXT4 boot forbidden\n"
+		"\tSHOW_FB_REC_ON:  Show fastboot / recovery on selection screen\n"
+		"\tSHOW_FB_REC_OFF: Hide fastboot / recovery on selection screen\n",
 	"Sets the default boot image",
 	"Sets the next boot image",
 	"Sets the default boot file (path in bootloader format).",
@@ -188,24 +190,21 @@ int main(int argc, char** argv)
 				get_option_possible = 0;
 				LOAD_MSC(cmd, dirty);
 
-				switch(cmd.settings)
-				{
-					case 0:
-						puts("BL_NORMAL\n");
-						break;
+				if (cmd.settings & MSC_SETTINGS_DEBUG_MODE)
+					puts("DEBUG_ON|");
+				else
+					puts("DEBUG_OFF|");
 
-					case MSC_SETTINGS_DEBUG_MODE:
-						puts("BL_DEBUG\n");
-						break;
+					if (cmd.settings & MSC_SETTINGS_FORBID_EXT)
+					puts("NOEXT4_ON|");
+				else
+					puts("NOEXT4_OFF|");
 
-					case MSC_SETTINGS_FORBID_EXT:
-						puts("BL_NOEXT4\n");
-						break;
+				if (cmd.settings & MSC_SETTINGS_SHOW_FB_REC)
+					puts("SHOW_FB_REC_ON\n");
+				else
+					puts("SHOW_FB_REC_OFF\n");
 
-					case MSC_SETTINGS_DEBUG_MODE | MSC_SETTINGS_FORBID_EXT:
-						puts("BL_DEBUG_NOEXT4\n");
-						break;
-				}
 				break;
 
 			case 'i':
@@ -271,19 +270,24 @@ int main(int argc, char** argv)
 				get_option_possible = 0;
 				LOAD_MSC(cmd, dirty);
 
-				if (!strcmp(optarg, "BL_NORMAL"))
-					mode = 0;
-				else if (!strcmp(optarg, "BL_DEBUG"))
-					mode = MSC_SETTINGS_DEBUG_MODE;
-				else if (!strcmp(optarg, "BL_NOEXT4"))
-					mode = MSC_SETTINGS_FORBID_EXT;
-				else if (!strcmp(optarg, "BL_DEBUG_NOEXT4"))
-					mode = MSC_SETTINGS_DEBUG_MODE | MSC_SETTINGS_FORBID_EXT;
+				if (!strcmp(optarg, "DEBUG_ON"))
+					mode |= MSC_SETTINGS_DEBUG_MODE;
+				else if (!strcmp(optarg, "DEBUG_OFF"))
+					mode &= ~MSC_SETTINGS_DEBUG_MODE;
+				else if (!strcmp(optarg, "NOEXT4_ON"))
+					mode |= MSC_SETTINGS_FORBID_EXT;
+				else if (!strcmp(optarg, "NOEXT4_OFF"))
+					mode &= ~MSC_SETTINGS_FORBID_EXT;
+				else if (!strcmp(optarg, "SHOW_FB_REC_ON"))
+					mode |= MSC_SETTINGS_SHOW_FB_REC;
+				else if (!strcmp(optarg, "SHOW_FB_REC_OFF"))
+					mode &= ~MSC_SETTINGS_SHOW_FB_REC;
 				else
 				{
 					error("Invalid bootloader settings!");
 					return 1;
 				}
+
 				cmd.settings = mode;
 				dirty = 1;
 				break;

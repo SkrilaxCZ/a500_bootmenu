@@ -49,6 +49,9 @@ fastboot getvar debug-mode
 fastboot getvar forbid-ext
 - returns ON/OFF depending on whether EXTFS booting is forbidden
 
+fastboot getvar show-fb-rec
+- return ON/OFF depending on whether showing recovery and fastboot on the selection screen
+
 ================================================================================
 Fastboot oem commands:
 ================================================================================
@@ -70,6 +73,12 @@ fastboot oem set-debug-mode on|off
 
 fastboot oem set-forbid-ext on|off
 - whether to allow EXTFS booting or not (for cases of corrupted filesystem and unability to boot)
+
+fastboot oem set-show-fb-rec on|off
+- whether to show recovery and fastboot in the boot selection screen
+
+fastboot oem all-vars
+- print all variables
 
 fastboot oem lock
 - ...
@@ -100,7 +109,7 @@ Example menu.skrilax file:
 ; commentary is prefixed with ';'
 ; .ini file structure
 
-; First, two possibilities to boot from partitions
+; First, three possibilities to boot from partitions
 
 ; LNX - primary image (always present, can specify title only)
 [LNX]
@@ -109,6 +118,9 @@ title=Android
 ; AKB - secondary image (will not show if property AKB partition doesn't hold android images)
 [AKB]
 title=LUbuntu
+
+; SOS - recovery image (will show if it's set by user)
+title=CWM
 
 ; Properties for EXTFS booting
 ;
