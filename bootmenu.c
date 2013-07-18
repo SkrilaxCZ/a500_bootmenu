@@ -804,22 +804,10 @@ void boot_interactively(unsigned char initial_selection, int force_initial, int 
 		return;
 	}
 
-	/* If we have only LNX, boot right away */
-	if (num_items == 1)
-	{
-		boot_status = "Booting primary kernel image";
-		if (error_message)
-		{
-			strncpy(error_message, "ERROR: Invalid primary (LNX) kernel image.", error_message_size);
-			error_message[error_message_size - 1] = '\0';
-		}
-
-		boot_normal(&boot_items[0], boot_status, ram_base);
-		return;
-	}
-
 	if (initial_selection == 0xFF)
 		initial_selection = num_items - 1;
+	else if (initial_selection >= num_items)
+		initial_selection = 0;
 
 	/* Recovery & Fastboot */
 	if (msc_cmd.settings & MSC_SETTINGS_SHOW_FB_REC)
@@ -852,6 +840,20 @@ void boot_interactively(unsigned char initial_selection, int force_initial, int 
 			menu_items[num_items].id = num_items;
 			num_items++;
 		}
+	}
+
+	/* If we have only LNX, boot right away */
+	if (num_items == 1)
+	{
+		boot_status = "Booting primary kernel image";
+		if (error_message)
+		{
+			strncpy(error_message, "ERROR: Invalid primary (LNX) kernel image.", error_message_size);
+			error_message[error_message_size - 1] = '\0';
+		}
+
+		boot_normal(&boot_items[0], boot_status, ram_base);
+		return;
 	}
 
 	/* Set message */
