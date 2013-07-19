@@ -62,7 +62,7 @@ $(shell echo "#define BOOTLOADER_GIT_REV \"g${GIT_SHORT_REV}\"" > ${O}/generated
 ALL_DEPS := $(O)/$(BOOTLOADER).bin $(O)/$(BOOTLOADER).blob
 
 ifeq ($(NO_BOOTLOADERCTL),)
-	ALL_DEPS += $(O)/bootloaderctl-linux $(O)/bootloaderctl-android
+	ALL_DEPS += $(O)/bootloaderctl-linux $(O)/bootloaderctl-android $(O)/bootloaderctl-android-static
 endif
 
 all: $(ALL_DEPS)
@@ -104,6 +104,9 @@ $(O)/bootloaderctl-linux: bootloaderctl.c
 $(O)/bootloaderctl-android: bootloaderctl.c
 	$(ANDROID_CC) $(ANDROID_CFLAGS) -Iinclude -DANDROID $< -O2 -o $@
 
+$(O)/bootloaderctl-android-static: bootloaderctl.c
+	$(ANDROID_CC) $(ANDROID_CFLAGS) -Iinclude -DANDROID -static $< -O2 -o $@
+
 .PHONY: prep
 
 #Clean
@@ -113,6 +116,7 @@ clean:
 	rm -f $(O)/blobmaker
 	rm -f $(O)/bootloaderctl-linux
 	rm -f $(O)/bootloaderctl-android
+	rm -f $(O)/bootloaderctl-android-static
 	rm -f $(O)/bootmenu.elf
 	rm -f $(O)/bootmenu.bin
 	rm -f $(O)/$(BOOTLOADER).bin
