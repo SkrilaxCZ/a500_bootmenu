@@ -1280,7 +1280,7 @@ void main(void* global_handle, uint32_t ram_base)
 		boot_menu_items[debug_item].title = "Set Debug Mode ON";
 
 	/* EXTFS boot */
-	boot_menu_items[i].id = MENU_ID_TOGGLE_DEBUG;
+	boot_menu_items[i].id = MENU_ID_FORBID_EXT;
 	extfs_boot_item = i;
 	i++;
 
