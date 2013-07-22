@@ -35,6 +35,9 @@
 #include <stdarg.h>
 #include "mystdlib.h"
 
+#define SD_CARD_MAJOR     2
+#define HSMMC_MAJOR       3
+
 #ifdef __thumb__
 
 #include "bootimg.h"
@@ -144,6 +147,34 @@ void android_boot_image(struct boot_img_hdr* bootimg, uint32_t bootimg_size, uin
 
 /* Adds an ATAG */
 int add_atag(uint32_t atag, uint32_t size, void* data);
+
+/* ===========================================================================
+ * Direct device access
+ * NOTE: Init / Deinit is handled by the binary part
+ * ===========================================================================
+ */
+
+/*
+ * HS MMC
+ */
+int hsmmc_open(int major, int minor, int** handle);
+int hsmmc_close(int* handle);
+int hsmmc_ioctl(int* handle, uint32_t opcode, uint32_t input_size, uint32_t output_size, const void* input_args, void* output_args);
+int hsmmc_power_up(int* handle);
+int hsmmc_power_down(int* handle);
+int hsmmc_read_sector(int* handle, uint32_t sector, void* buffer, uint32_t num_sectors);
+int hsmmc_write_sector(int* handle, uint32_t sector, void* buffer, uint32_t num_sectors);
+
+/*
+ * SD
+ */
+int sd_open(int major, int minor, int** handle);
+int sd_close(int* handle);
+int sd_ioctl(int* handle, uint32_t opcode, uint32_t input_size, uint32_t output_size, const void* input_args, void* output_args);
+int sd_power_up(int* handle);
+int sd_power_down(int* handle);
+int sd_read_sector(int* handle, uint32_t sector, void* buffer, uint32_t num_sectors);
+int sd_write_sector(int* handle, uint32_t sector, void* buffer, uint32_t num_sectors);
 
 /*
  * Fastboot

@@ -36,7 +36,7 @@ BL_OBJS := $(O)/bl_0_03_14.o $(O)/framebuffer.o $(O)/jpeg.o $(O)/bootmenu.go $(O
 ARM_OBJS := $(O)/debug.ao
 OBJS := $(O)/start.o $(LIB_OBJS) $(BL_OBJS) $(ARM_OBJS)
 
-BOOTLOADER := bootloader_v9
+BOOTLOADER := bootloader_v10
 
 # Attempt to create a output directory.
 $(shell [ -d ${O} ] || mkdir -p ${O})

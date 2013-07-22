@@ -96,6 +96,34 @@ void NAKED android_boot_image(struct boot_img_hdr* bootimg, uint32_t bootimg_siz
 int  NAKED add_atag(uint32_t atag, uint32_t size, void* data)                                                            { ASM_THUMB_B(0x10F730); }
 
 /* ===========================================================================
+ * Direct device access
+ * NOTE: Init / Deinit is handled by the binary part
+ * ===========================================================================
+ */
+
+/*
+ * HS MMC
+ */
+int NAKED hsmmc_open(int major, int minor, int** handle)                                                                                        { ASM_THUMB_B(0x14717C); }
+int NAKED hsmmc_close(int* handle)                                                                                                              { ASM_THUMB_B(0x146A80); }
+int NAKED hsmmc_ioctl(int* handle, uint32_t opcode, uint32_t input_size, uint32_t output_size, const void* input_args, void* output_args)       { ASM_THUMB_B(0x1478D4); }
+int NAKED hsmmc_power_up(int* handle)                                                                                                           { ASM_THUMB_B(0x14735C); }
+int NAKED hsmmc_power_down(int* handle)                                                                                                         { ASM_THUMB_B(0x146A54); }
+int NAKED hsmmc_read_sector(int* handle, uint32_t sector, void* buffer, uint32_t num_sectors)                                                   { ASM_THUMB_B(0x14738C); }
+int NAKED hsmmc_write_sector(int* handle, uint32_t sector, void* buffer, uint32_t num_sectors)                                                  { ASM_THUMB_B(0x1474CC); }
+
+/*
+ * SD
+ */
+int NAKED sd_open(int major, int minor, int** handle)                                                                                           { ASM_THUMB_B(0x144EC0); }
+int NAKED sd_close(int* handle)                                                                                                                 { ASM_THUMB_B(0x143E10); }
+int NAKED sd_ioctl(int* handle, uint32_t opcode, uint32_t input_size, uint32_t output_size, const void* input_args, void* output_args)          { ASM_THUMB_B(0x145864); }
+int NAKED sd_power_up(int* handle)                                                                                                              { ASM_THUMB_B(0x1450AC); }
+int NAKED sd_power_down(int* handle)                                                                                                            { ASM_THUMB_B(0x1450F8); }
+int NAKED sd_read_sector(int* handle, uint32_t sector, void* buffer, uint32_t num_sectors)                                                      { ASM_THUMB_B(0x145628); }
+int NAKED sd_write_sector(int* handle, uint32_t sector, void* buffer, uint32_t num_sectors)                                                     { ASM_THUMB_B(0x14513C); }
+
+/* ===========================================================================
  * ARM Mode functions
  * ===========================================================================
  */

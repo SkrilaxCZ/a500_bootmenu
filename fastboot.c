@@ -300,6 +300,24 @@ void fastboot_get_var_product(char* reply_buffer, int reply_buffer_size)
 	reply_buffer[reply_buffer_size - 1] = '\0';
 }
 
+/* Is SD card present */
+void fastboot_get_var_is_sdcard_present(char* reply_buffer, int reply_buffer_size)
+{
+	const char* repl;
+	int* sd_handle;
+
+	if (sd_open(SD_CARD_MAJOR, 0, &sd_handle))
+		repl = "no";
+	else
+	{
+		repl = "yes";
+		sd_close(sd_handle);
+	}
+
+	strncpy(reply_buffer, repl, reply_buffer_size);
+	reply_buffer[reply_buffer_size - 1] = '\0';
+}
+
 /* List of fastboot variables */
 struct fastboot_get_var_list_item fastboot_variable_table[] =
 {
@@ -370,6 +388,10 @@ struct fastboot_get_var_list_item fastboot_variable_table[] =
 	{
 		.var_name = "product",
 		.var_handler = &fastboot_get_var_product,
+	},
+	{
+		.var_name = "is-sdcard-present",
+		.var_handler = &fastboot_get_var_is_sdcard_present,
 	}
 };
 
@@ -711,7 +733,7 @@ int fastboot_oem_cmd_all_vars(int fastboot_handle, const char* args)
 #ifdef BOOTLOADER_ENABLE_DEBUG
 
 /* Dump */
-int fastboot_oem_cmd_oem_bldebug_dump(int fastboot_handle, const char* args)
+int fastboot_oem_cmd_bldebug_dump(int fastboot_handle, const char* args)
 {
 	int fastboot_status, size, rem;
 	long int address, length;
@@ -834,7 +856,7 @@ int fastboot_oem_cmd_oem_bldebug_dump(int fastboot_handle, const char* args)
 }
 
 /* Get */
-int fastboot_oem_cmd_oem_bldebug_get(int fastboot_handle, const char* args)
+int fastboot_oem_cmd_bldebug_get(int fastboot_handle, const char* args)
 {
 	int fastboot_status;
 	long int address;
@@ -861,7 +883,7 @@ int fastboot_oem_cmd_oem_bldebug_get(int fastboot_handle, const char* args)
 }
 
 /* Set */
-int fastboot_oem_cmd_oem_bldebug_set(int fastboot_handle, const char* args)
+int fastboot_oem_cmd_bldebug_set(int fastboot_handle, const char* args)
 {
 	int fastboot_status;
 	long int address, value;
@@ -901,7 +923,7 @@ int fastboot_oem_cmd_oem_bldebug_set(int fastboot_handle, const char* args)
 }
 
 /* dmesg */
-int fastboot_oem_cmd_oem_bldebug_dmesg(int fastboot_handle, const char* args)
+int fastboot_oem_cmd_bldebug_dmesg(int fastboot_handle, const char* args)
 {
 	int fastboot_status, rotated, finished, sz, rem;
 	const char* print_begin = FASTBOOT_RESP_INFO "===== DMESG START =====";
@@ -1023,19 +1045,19 @@ struct fastboot_oem_cmd_list_item fastboot_oem_command_table[] =
 #ifdef BOOTLOADER_ENABLE_DEBUG
 	{
 		.cmd_name = "bldebug dump",
-		.cmd_handler = &fastboot_oem_cmd_oem_bldebug_dump,
+		.cmd_handler = &fastboot_oem_cmd_bldebug_dump,
 	},
 	{
 		.cmd_name = "bldebug get",
-		.cmd_handler = &fastboot_oem_cmd_oem_bldebug_get,
+		.cmd_handler = &fastboot_oem_cmd_bldebug_get,
 	},
 	{
 		.cmd_name = "bldebug set",
-		.cmd_handler = &fastboot_oem_cmd_oem_bldebug_set,
+		.cmd_handler = &fastboot_oem_cmd_bldebug_set,
 	},
 	{
 		.cmd_name = "bldebug dmesg",
-		.cmd_handler = &fastboot_oem_cmd_oem_bldebug_dmesg,
+		.cmd_handler = &fastboot_oem_cmd_bldebug_dmesg,
 	}
 #endif
 };

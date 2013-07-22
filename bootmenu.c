@@ -42,8 +42,8 @@
 #define MENU_ID_WIPE_CACHE   10
 
 /* Bootloader ID */
-const char* bootloader_title = "Skrilax_CZ's bootloader V9";
-const char* bootloader_id = "V9-" BOOTLOADER_GIT_REV;
+const char* bootloader_title = "Skrilax_CZ's bootloader V10";
+const char* bootloader_id = "V10-" BOOTLOADER_GIT_REV;
 
 char extra_cmdline[1024];
 
